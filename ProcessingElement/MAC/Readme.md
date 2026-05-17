@@ -6,6 +6,6 @@ This unit is used to performs an hardware multiply and accumulate operation. The
 - Carry Look-ahead or final sum (carry-skip may be considered to reduce area).
 
 The MAC unit should be small enough to achieve a large enough systolic array and process data with high troughput.
-<p>
-  <img width="690" height="382" alt="MUL" src="https://github.com/user-attachments/assets/54da51b6-dd85-47f3-8177-650571911ae3" />
+<p align=center>
+  <img width="642" height="226" alt="MAC" src="https://github.com/user-attachments/assets/51334e96-f597-45cf-9f01-1f45e34d4e18" />
 </p>
