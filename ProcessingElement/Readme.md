@@ -9,3 +9,6 @@ How it works:
 1. The processing element receives at every clock cycle N weights and inputs to be stored in the FIFO registers and forwarded to the next PE using the output lines. 
 2. After N elements, the PE receives a MAC result from the previous PE and starts to process the Weights+Acrivations saved in the FIFO registers.
 3. After N MAC cycles, the result is forwarded to the output line so that the next PE can start processing its elements.
+<p align=center> 
+<img width="460" height="270" alt="PE" src="https://github.com/user-attachments/assets/95948c7d-e315-4633-989e-ba2d66fc9881" />
+</p>
