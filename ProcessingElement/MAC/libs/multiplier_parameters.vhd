@@ -2,7 +2,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-package PARTIAL_TYPES is
+package MULTIPLIER_PARAMETERS is
     -- Definition of the partials format 
     
     -- The multiplicator uses a booth radix algorithm to decompose the first multiplication into more partials to add using a dadda tree 
@@ -71,7 +71,7 @@ package PARTIAL_TYPES is
     
 end package;
 
-package body PARTIAL_TYPES is
+package body MULTIPLIER_PARAMETERS is
     function get_tree_column_height( 
         i: integer;
         partials_in: integer) 

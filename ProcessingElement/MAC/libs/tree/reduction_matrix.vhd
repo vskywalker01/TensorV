@@ -3,7 +3,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
-use work.PARTIAL_TYPES.ALL;
+use work.MULTIPLIER_PARAMETERS.ALL;
 
 entity reduction_matrix is
     Generic (

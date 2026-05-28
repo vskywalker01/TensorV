@@ -1,7 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
-use work.PARTIAL_TYPES.ALL;
+use work.MULTIPLIER_PARAMETERS.ALL;
 
 entity reduction_matrix_test is
 
@@ -9,8 +9,8 @@ entity reduction_matrix_test is
 end reduction_matrix_test;
 
 architecture Behavioral of reduction_matrix_test is
-    constant IN_DIM: INTEGER := 4;
-    constant OUT_DIM: INTEGER := 3;
+    constant IN_DIM: INTEGER := 5;
+    constant OUT_DIM: INTEGER := 4;
         
     component reduction_matrix is
         Generic (

@@ -1,7 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
-use work.PARTIAL_TYPES.ALL;
+use work.MULTIPLIER_PARAMETERS.ALL;
 
 
 entity partials_generator_test is
@@ -30,7 +30,7 @@ begin
     test: process
     begin 
         a <= "11111111";
-        b <= "00000011";
+        b <= "00001010";
         wait for 10ns;
     end process; 
 
