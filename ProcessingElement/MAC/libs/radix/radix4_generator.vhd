@@ -6,18 +6,20 @@ use IEEE.NUMERIC_STD.ALL;
 use work.MULTIPLIER_PARAMETERS.ALL;
 
 entity radix4_generator is
-  Port (
-    data_a: in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-    window: in STD_LOGIC_VECTOR(2 downto 0);
-    
-    data_out: out STD_LOGIC_VECTOR(DATA_SIZE downto 0)
-  );
+    Generic (
+        WINDOW_POS: integer := 0
+    );
+    Port (
+        data_a: in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+        window: in STD_LOGIC_VECTOR(2 downto 0);
+        
+        data_out: out STD_LOGIC_VECTOR(DATA_SIZE downto 0)
+    );
 end radix4_generator;
 
 architecture Behavioral of radix4_generator is
     signal a: signed(DATA_SIZE downto 0);
     signal ma: signed(DATA_SIZE downto 0);
-
 begin
     a(DATA_SIZE-1 downto 0) <= signed(data_a);
     a(DATA_SIZE) <= a(DATA_SIZE-1);

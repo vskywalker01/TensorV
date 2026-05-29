@@ -15,10 +15,10 @@ architecture Behavioral of MAC_stage1_test is
         
             data_a:         in STD_LOGIC_VECTOR(7 downto 0);
             data_b:         in STD_LOGIC_VECTOR(7 downto 0); 
-            data_acc_in:    in STD_LOGIC_VECTOR(7 downto 0); 
+            data_acc_in:    in STD_LOGIC_VECTOR(15 downto 0); 
             
             p_out:          out PARTIALS_ARRAY(0 to 3);
-            data_acc_out:   out STD_LOGIC_VECTOR(7 downto 0)
+            data_acc_out:   out STD_LOGIC_VECTOR(15 downto 0)
         );
     end component;
     
@@ -53,13 +53,13 @@ begin
         reset <= '1'; 
         wait for 30ns; 
         reset <= '0'; 
-        data_acc_in <= "11111111";
-        data_a <= "00001111"; --15 
-        data_b <= "00000010"; --2 
+        data_acc_in <= "00000000";
+        data_a <= "11111111"; -- 
+        data_b <= "01011010"; -- 
         wait for 50ns; 
-        data_a <= "00001111"; --15 
-        data_b <= "11111110"; ---2 
-        wait for 200ns;
+        --data_a <= "00001111"; -- 
+        --data_b <= "11111110"; --- 
+        --wait for 200ns;
     end process; 
 
 end Behavioral;

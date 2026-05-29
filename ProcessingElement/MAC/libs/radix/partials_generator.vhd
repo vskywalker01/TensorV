@@ -23,18 +23,19 @@ architecture Behavioral of partials_generator is
     end component;
     signal partials: PARTIALS_ARRAY(0 to PARTIALS_TO_REDUCE-1);
 
-    signal b: STD_LOGIC_VECTOR(DATA_SIZE+RADIX_WINDOW_SIZE downto 0);
+    signal b: STD_LOGIC_VECTOR(DATA_SIZE+RADIX_WINDOW_SIZE-1 downto 0);
 begin
-    b(DATA_SIZE-1 downto 0) <= data_b;
-    sign_extension: for i in 0 to (RADIX_WINDOW_SIZE) generate 
-        b(DATA_SIZE+i) <= '0';
+    b(DATA_SIZE downto 1) <= data_b;
+    b(0) <= '0';
+    sign_ext: for i in 1 to (RADIX_WINDOW_SIZE-1) generate
+        b(DATA_SIZE+i) <= data_b(DATA_SIZE-1);
     end generate;
     
-    radix4: if (RADIX_WINDOW_SIZE=2) generate 
+    radix4: if (RADIX_WINDOW_SIZE=3) generate 
         partial_windows: for r in 0 to (PARTIALS_TO_REDUCE-1) generate 
-            constant WINDOW_BASE: integer := r*(RADIX_WINDOW_SIZE+1);
-            constant WINDOW_END: integer := window_base+RADIX_WINDOW_SIZE+1; 
-            constant PARTIAL_OUT_BASE: integer := r*(RADIX_WINDOW_SIZE+1); 
+            constant WINDOW_BASE: integer := r*RADIX_WINDOW_SHIFT;
+            constant WINDOW_END: integer := window_base+RADIX_WINDOW_SIZE; 
+            constant PARTIAL_OUT_BASE: integer := r*RADIX_WINDOW_SHIFT; 
             constant PARTIAL_OUT_END: integer := PARTIAL_OUT_BASE +(DATA_SIZE+RADIX_MAX_SHIFT);
             
             signal partial_out: STD_LOGIC_VECTOR ((DATA_SIZE + RADIX_MAX_SHIFT)-1 downto 0);
@@ -47,9 +48,9 @@ begin
                             data_out => partial_out
                         );
                 
-                partial_touting: for c in 0 to (DATA_SIZE+RADIX_MAX_SHIFT-1) generate 
+                partial_routing: for c in 0 to (DATA_SIZE+RADIX_MAX_SHIFT-1) generate 
                     constant PARTIALS_C_COORDINATE: integer := c+ PARTIAL_OUT_BASE;
-                    constant DATA_ALIGN_SHIFT: integer := 0 when (PARTIALS_C_COORDINATE<(DATA_SIZE + RADIX_MAX_SHIFT)) else (((PARTIALS_C_COORDINATE-DATA_SIZE-RADIX_MAX_SHIFT)+RADIX_WINDOW_SIZE+)/RADIX_WINDOW_SIZE);
+                    constant DATA_ALIGN_SHIFT: integer := 0 when (PARTIALS_C_COORDINATE<(DATA_SIZE + RADIX_MAX_SHIFT)) else (((PARTIALS_C_COORDINATE-DATA_SIZE-RADIX_MAX_SHIFT)+RADIX_WINDOW_SHIFT)/RADIX_WINDOW_SHIFT);
                     begin 
                         partials_out(r-DATA_ALIGN_SHIFT)(PARTIALS_C_COORDINATE)<=partial_out(c);
                 end generate; 

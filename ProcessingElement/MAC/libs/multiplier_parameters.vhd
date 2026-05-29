@@ -8,12 +8,13 @@ package MULTIPLIER_PARAMETERS is
     -- The multiplicator uses a booth radix algorithm to decompose the first multiplication into more partials to add using a dadda tree 
     -- To edit the radix format and the data size change these two variables: 
     constant DATA_SIZE:             integer := 8;   -- Dimension of the input numbers to multiply in bits 
-    constant RADIX_WINDOW_SIZE:     integer := 2;   -- Type of the radix algorithm (2 for Radix-4, 3 for Radix-8) 
+    constant RADIX_WINDOW_SIZE:     integer := 3;   -- Type of the radix algorithm (2 for Radix-2, 3 for Radix-4, 4 for Radix-8) 
     
     -- Partial size and number of partials to reduce are automatically calculated using DATA_SIZE and RADIX_WINDOW_SIZE
-    constant RADIX_MAX_SHIFT:       integer := RADIX_WINDOW_SIZE-1;
+    constant RADIX_WINDOW_SHIFT:    integer := RADIX_WINDOW_SIZE-1;     -- number of bits to shilft to process the next partial
+    constant RADIX_MAX_SHIFT:       integer := RADIX_WINDOW_SIZE-2;     -- maximum shift of the multiplier introduced in the radix partial generator
     constant PARTIAL_SIZE:          integer := (DATA_SIZE*2)+1; 
-    constant PARTIALS_TO_REDUCE:    integer := ((DATA_SIZE + RADIX_MAX_SHIFT) + RADIX_WINDOW_SIZE -1)/RADIX_WINDOW_SIZE; 
+    constant PARTIALS_TO_REDUCE:    integer := ((DATA_SIZE + RADIX_MAX_SHIFT) + RADIX_WINDOW_SHIFT -1)/RADIX_WINDOW_SHIFT; 
     
     -- Definition of partials array (partial is an array of STD_LOGIC and the entire metrix is an 2-dim array of STD_LOGIC)
     
@@ -85,19 +86,19 @@ package body MULTIPLIER_PARAMETERS is
     
     begin 
         -- Same encoding used in  get_tree_column_height
-        ASCENDING_HEIGHT := (i+RADIX_WINDOW_SIZE)/RADIX_WINDOW_SIZE;
-        DESCENDING_HEIGHT := (PARTIAL_SIZE + RADIX_WINDOW_SIZE -i -1)/RADIX_WINDOW_SIZE;
+        ASCENDING_HEIGHT := (i+RADIX_WINDOW_SHIFT)/RADIX_WINDOW_SHIFT;
+        DESCENDING_HEIGHT := (PARTIAL_SIZE + RADIX_WINDOW_SHIFT -i -1)/RADIX_WINDOW_SHIFT;
         CONSTANT_HEIGHT := PARTIALS_IN;
-        LAST_CARRY_POS:= (RADIX_WINDOW_SIZE*(PARTIALS_TO_REDUCE-partials_in))+(DATA_SIZE+RADIX_MAX_SHIFT);
-        
+        LAST_CARRY_POS:= (RADIX_WINDOW_SHIFT*(PARTIALS_TO_REDUCE-partials_in))+(DATA_SIZE+RADIX_MAX_SHIFT);
+
         -- Example: partials in = 4 PARTIALS_TO_REDUCE=5, RADIX-4 
         -- | des  |   const         | asc   |
         -- 16 * * * * * * * * * * * * * * * 0
-        --      * * * * * * * * * * * * * 
-        --          * * * * * * * * *               <- partials out = 3 
-        --            * * * * * *                   <- partials in = 3
-        --            ^
-        --     LAST_CARRY_POS
+        --        * * * * * * * * * * *  
+        --            * * * * * * *                <- partials out = 3 
+        --              * * * *                    <- partials in = 3
+        --              ^
+        --        LAST_CARRY_POS
         
         if (i<0) then
             return 0; 
@@ -105,7 +106,7 @@ package body MULTIPLIER_PARAMETERS is
         
         if (ASCENDING_HEIGHT < partials_in) then 
             HEIGHT:= ASCENDING_HEIGHT;
-        elsif ((DESCENDING_HEIGHT < partials_in) and (i>LAST_CARRY_POS)) then 
+        elsif ((DESCENDING_HEIGHT < partials_in) and ((i>LAST_CARRY_POS) or (partials_in=PARTIALS_TO_REDUCE))) then 
             HEIGHT:= DESCENDING_HEIGHT;
         else
             HEIGHT:= CONSTANT_HEIGHT;
@@ -131,18 +132,18 @@ package body MULTIPLIER_PARAMETERS is
         -- Example: partials in = 4 partials_out=3, RADIX-4 
         -- | des  |   const         | asc   |
         -- 16 * * * * * * * * * * * * * * * 0
-        --      * * * * * * * * * * * * * 
-        --          * * * * * * * * *               <- partials out = 3 
-        --            * * * * * *                   <- partials in = 4
-        --          R R R R R R R 
-        --        C C C C C C C                     <- carrys generated from previous column
-        --        ^
+        --        * * * * * * * * * * *  
+        --            * * * * * * *                 <- partials out = 3 
+        --              * * * * *                   <- partials in = 4
+        --              R R R R R 
+        --            C C C C C                     <- carrys generated from previous column
+        --            ^
         --    LAST_CARRY_POS (next stage)
         
-        ASCENDING_HEIGHT := (i+RADIX_WINDOW_SIZE)/RADIX_WINDOW_SIZE;
-        DESCENDING_HEIGHT := (PARTIAL_SIZE + RADIX_WINDOW_SIZE -i -1)/RADIX_WINDOW_SIZE;
+        ASCENDING_HEIGHT := (i+RADIX_WINDOW_SHIFT)/RADIX_WINDOW_SHIFT;
+        DESCENDING_HEIGHT := (PARTIAL_SIZE + RADIX_WINDOW_SHIFT -i -1)/RADIX_WINDOW_SHIFT;
         CONSTANT_HEIGHT := PARTIALS_IN;     
-        LAST_CARRY_POS:= (RADIX_WINDOW_SIZE*(PARTIALS_TO_REDUCE-partials_out))+(DATA_SIZE+RADIX_MAX_SHIFT);
+        LAST_CARRY_POS:= (RADIX_WINDOW_SHIFT*(PARTIALS_TO_REDUCE-partials_out))+(DATA_SIZE+RADIX_MAX_SHIFT);
         
         if (i<0) then
             return 0; 
