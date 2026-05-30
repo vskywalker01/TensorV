@@ -5,16 +5,19 @@ use IEEE.NUMERIC_STD.ALL;
 use work.MULTIPLIER_PARAMETERS.ALL;
 
 entity MAC_stage1 is
+    Generic (
+        ACC_SIZE: INTEGER := 32
+    );
     Port ( 
         clk: in STD_LOGIC; 
         reset: in STD_LOGIC; 
     
         data_a:         in STD_LOGIC_VECTOR(7 downto 0);
         data_b:         in STD_LOGIC_VECTOR(7 downto 0); 
-        data_acc_in:    in STD_LOGIC_VECTOR(7 downto 0); 
+        data_acc_in:    in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
         
         p_out:          out PARTIALS_ARRAY(0 to 3);
-        data_acc_out:   out STD_LOGIC_VECTOR(7 downto 0)
+        data_acc_out:   out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0)
     );
 end MAC_stage1;
 
