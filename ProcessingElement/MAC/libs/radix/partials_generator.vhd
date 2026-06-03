@@ -1,59 +1,51 @@
+-- baugh-wooley partial generator based on hantamian's organization
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
-use work.MULTIPLIER_PARAMETERS.ALL;
+use work.MATRIX_REDUCTION_PARAMETERS.ALL;
 
 entity partials_generator is
-  Port (
-    data_a: in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-    data_b: in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+    Port (
+        data_a: in STD_LOGIC_VECTOR(7 downto 0);
+        data_b: in STD_LOGIC_VECTOR(7 downto 0);
     
-    partials_out: out PARTIALS_ARRAY(0 to PARTIALS_TO_REDUCE-1)
-  );
+        matrix_out: out MATRIX(0 to 7)
+    );
 end partials_generator;
 
 architecture Behavioral of partials_generator is
-    component radix4_generator is
-      Port (
-        data_a: in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-        window: in STD_LOGIC_VECTOR(2 downto 0);
-        
-        data_out: out STD_LOGIC_VECTOR(DATA_SIZE downto 0)
-      );
-    end component;
-    signal partials: PARTIALS_ARRAY(0 to PARTIALS_TO_REDUCE-1);
+    constant DATA_SIZE: INTEGER := 8;
+    signal partial_b1: STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
+    signal partial_b0: STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
 
-    signal b: STD_LOGIC_VECTOR(DATA_SIZE+RADIX_WINDOW_SIZE-1 downto 0);
 begin
-    b(DATA_SIZE downto 1) <= data_b;
-    b(0) <= '0';
-    sign_ext: for i in 1 to (RADIX_WINDOW_SIZE-1) generate
-        b(DATA_SIZE+i) <= data_b(DATA_SIZE-1);
-    end generate;
+    partial_b1(DATA_SIZE-2 downto 0) <= data_b(DATA_SIZE-2 downto 0);
+    partial_b0(DATA_SIZE-2 downto 0) <= (others => '0');
+    partial_b1(7) <= not(data_b(7));
+    partial_b0(7) <= '1';
     
-    radix4: if (RADIX_WINDOW_SIZE=3) generate 
-        partial_windows: for r in 0 to (PARTIALS_TO_REDUCE-1) generate 
-            constant WINDOW_BASE: integer := r*RADIX_WINDOW_SHIFT;
-            constant WINDOW_END: integer := window_base+RADIX_WINDOW_SIZE; 
-            constant PARTIAL_OUT_BASE: integer := r*RADIX_WINDOW_SHIFT; 
-            constant PARTIAL_OUT_END: integer := PARTIAL_OUT_BASE +(DATA_SIZE+RADIX_MAX_SHIFT);
+    partials_routing: for p in 0 to (MATRIX_PARTIALS_TO_REDUCE-1) generate
+        
+        col: for c in 0 to (DATA_SIZE) generate 
+            constant OUT_COL: INTEGER := (p*MATRIX_PARTIAL_SHIFT) + c;
+            constant HEIGHT: INTEGER := get_matrix_column_height(OUT_COL,MATRIX_PARTIALS_TO_REDUCE);
+            constant SHIFT: INTEGER := MATRIX_PARTIALS_TO_REDUCE-get_matrix_column_height(OUT_COL,MATRIX_PARTIALS_TO_REDUCE);
+            constant OUT_ROW: INTEGER := p when (OUT_COL<(MATRIX_PARTIAL_SIZE-1)) else 
+                                         p -(MATRIX_PARTIALS_TO_REDUCE-get_matrix_column_height(OUT_COL,MATRIX_PARTIALS_TO_REDUCE));
             
-            signal partial_out: STD_LOGIC_VECTOR ((DATA_SIZE + RADIX_MAX_SHIFT)-1 downto 0);
-            begin 
+        begin
+            last_bit: if (c=DATA_SIZE) generate 
+                matrix_out(OUT_ROW)(OUT_COL) <= '1' when (p = 0) else '0';
+            end generate;
             
-                partial_generator: radix4_generator 
-                        port map(
-                            data_a => data_a,
-                            window => b(WINDOW_END-1 downto WINDOW_BASE),
-                            data_out => partial_out
-                        );
-                
-                partial_routing: for c in 0 to (DATA_SIZE+RADIX_MAX_SHIFT-1) generate 
-                    constant PARTIALS_C_COORDINATE: integer := c+ PARTIAL_OUT_BASE;
-                    constant DATA_ALIGN_SHIFT: integer := 0 when (PARTIALS_C_COORDINATE<(DATA_SIZE + RADIX_MAX_SHIFT)) else (((PARTIALS_C_COORDINATE-DATA_SIZE-RADIX_MAX_SHIFT)+RADIX_WINDOW_SHIFT)/RADIX_WINDOW_SHIFT);
-                    begin 
-                        partials_out(r-DATA_ALIGN_SHIFT)(PARTIALS_C_COORDINATE)<=partial_out(c);
-                end generate; 
+            first_bits: if (c<DATA_SIZE) generate
+                matrix_out(OUT_ROW)(OUT_COL) <= 
+                    partial_b1(c)       when (data_b(p)='1' and p < (MATRIX_PARTIALS_TO_REDUCE-1)) else 
+                    not(partial_b1(c))  when (data_b(p)='1' and p = (MATRIX_PARTIALS_TO_REDUCE-1)) else 
+                    partial_b0(c)       when (data_b(p)='0' and p < (MATRIX_PARTIALS_TO_REDUCE-1)) else 
+                    not(partial_b0(c));
+            end generate;
         end generate; 
-    end generate;
+    end generate;  
 end Behavioral;
