@@ -2,7 +2,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
-use work.MULTIPLIER_PARAMETERS.ALL;
+use work.MATRIX_REDUCTION_PARAMETERS.ALL;
 
 entity MAC_stage1 is
     Generic (
@@ -16,7 +16,7 @@ entity MAC_stage1 is
         data_b:         in STD_LOGIC_VECTOR(7 downto 0); 
         data_acc_in:    in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
         
-        p_out:          out PARTIALS_ARRAY(0 to 3);
+        matrix_out:     out MATRIX(0 to 5);
         data_acc_out:   out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0)
     );
 end MAC_stage1;
@@ -24,25 +24,25 @@ end MAC_stage1;
 architecture Behavioral of MAC_stage1 is 
     component partials_generator is
         Port (
-            data_a: in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-            data_b: in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-    
-            partials_out: out PARTIALS_ARRAY(0 to PARTIALS_TO_REDUCE-1)
+            data_a: in STD_LOGIC_VECTOR(7 downto 0);
+            data_b: in STD_LOGIC_VECTOR(7 downto 0);
+        
+            matrix_out: out MATRIX(0 to 7)
         );
     end component;
     component reduction_matrix is
         Generic (
-            PARTIALS_IN: INTEGER;
-            PARTIALS_OUT: INTEGER
+            MATRIX_ROWS_IN: INTEGER;
+            MATRIX_ROWS_OUT: INTEGER
         );
         Port ( 
-            input: in PARTIALS_ARRAY(0 to PARTIALS_IN-1);
-            output: out PARTIALS_ARRAY(0 to PARTIALS_OUT-1)
+            input: in MATRIX(0 to MATRIX_ROWS_IN-1);
+            output: out MATRIX(0 to MATRIX_ROWS_OUT-1)
         );
     end component;
     
-    signal partials_r0: PARTIALS_ARRAY(0 to 4);
-    signal partials_r1: PARTIALS_ARRAY(0 to 3);
+    signal matrix_r0: MATRIX(0 to 7);
+    signal matrix_r1: MATRIX(0 to 5);
     
 begin 
     generator: partials_generator
@@ -50,16 +50,16 @@ begin
             data_a => data_a,
             data_b => data_b,
             
-            partials_out => partials_r0
+            matrix_out => matrix_r0
         );
-    matrix_54: reduction_matrix
+    matrix_86: reduction_matrix
         generic map(
-            PARTIALS_IN => 5,
-            PARTIALS_OUT => 4
+            MATRIX_ROWS_IN => 8,
+            MATRIX_ROWS_OUT => 6
         )
         port map (
-            input => partials_r0,
-            output => partials_r1
+            input => matrix_r0,
+            output => matrix_r1
         );
         
     pipeline_latch: process(clk) 
@@ -72,14 +72,14 @@ begin
                 data_acc_out <= data_acc_in; 
             end if;
         
-            for c in 0 to PARTIAL_SIZE-1 loop 
-                TREE_HEIGHT:= get_tree_column_height(c,4); 
+            for c in 0 to MATRIX_OUTPUT_SIZE-1 loop 
+                TREE_HEIGHT:= get_matrix_column_height(c,6); 
                 
                 for r in 0 to TREE_HEIGHT-1 loop
                     if (reset = '1') then 
-                        p_out(r)(c) <= '0'; 
+                        matrix_out(r)(c) <= '0'; 
                     else 
-                        p_out(r)(c) <= partials_r1(r)(c); 
+                        matrix_out(r)(c) <= matrix_r1(r)(c); 
                     end if;
                 end loop;
             end loop;

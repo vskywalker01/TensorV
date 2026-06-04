@@ -1,7 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
-use work.MULTIPLIER_PARAMETERS.ALL;
+use work.MATRIX_REDUCTION_PARAMETERS.ALL;
 
 entity MAC_stage3 is
     Generic (
@@ -11,7 +11,7 @@ entity MAC_stage3 is
         clk:            in STD_LOGIC; 
         reset:          in STD_LOGIC; 
     
-        p_in:           in PARTIALS_ARRAY(0 to 1);
+        matrix_in:      in MATRIX(0 to 1);
         data_acc_in:    in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
         
         r_out:          out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0)
@@ -21,22 +21,31 @@ end MAC_stage3;
 architecture Behavioral of MAC_stage3 is 
     type ACCUMULATION_PARTIALS is ARRAY (natural range <>) of STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
     
-    signal partial1: SIGNED(PARTIAL_SIZE-1 downto 0); 
-    signal partial2: SIGNED(PARTIAL_SIZE-1 downto 0);
-    signal mul_result: SIGNED(ACC_SIZE-1 downto 0); 
+    signal partial1: SIGNED(ACC_SIZE-1 downto 0); 
+    signal partial2: SIGNED(ACC_SIZE-1 downto 0);
+
     signal result: SIGNED(ACC_SIZE-1 downto 0);
     
 begin 
-    partials_routing: for c in 0 to (PARTIAL_SIZE-1) generate
-        constant HEIGHT: INTEGER := get_tree_column_height(c,2);
+    partials_routing: for c in 0 to (MATRIX_OUTPUT_SIZE-1) generate
+        constant HEIGHT: INTEGER := get_matrix_column_height(c,2);
     begin
-        partial1(c) <= p_in(0)(c); 
-        partial2(c) <= p_in(1)(c) when (HEIGHT>1) else '0';
+        partial1(c) <= matrix_in(0)(c); 
+        partial2(c) <= matrix_in(1)(c) when HEIGHT>1 else '0';
     end generate; 
-    mul_result(PARTIAL_SIZE-1 downto 0) <= partial1+partial2;
+    matrix_result(MATRIX_OUTPUT_SIZE-1 downto 0) <= partial1+partial2;
     
-    sign_extension: for c in PARTIAL_SIZE to (ACC_SIZE-1) generate
-        mul_result(c) <= mul_result(PARTIAL_SIZE-1);
+    mul_extension: for c in 0 to (MATRIX_OUTPUT_SIZE-1) generate
+        constant HEIGHT: INTEGER := get_matrix_column_height(c,2);
+    begin
+        lower_bits: if (c<MATRIX_OUTPUT_SIZE-1) generate
+        partial1(c) <= matrix_in(0)(c); 
+        partial2(c) <= matrix_in(1)(c) when HEIGHT>1 else '0';
+    end generate; 
+    
+    
+    sign_extension: for c in MATRIX_OUTPUT_SIZE to (ACC_SIZE-1) generate
+        mul_result(c) <= mul_result(MATRIX_OUTPUT_SIZE-1);
     end generate;
     
     result <= mul_result+SIGNED(data_acc_in);

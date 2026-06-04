@@ -87,11 +87,11 @@ begin
         -- generating eventual half adders
         routing_half_adders: for a in 0 to (HALF_ADDERS-1) generate 
             -- base position of the current half adder input (row index)
-            constant ADDR_IN: integer := ADDERS_IN_FULL_BASE + (a*2);
+            constant ADDR_IN: integer := ADDERS_IN_HALF_BASE + (a*2);
             -- base position of the current half adder's output (row index)
-            constant ADDR_CARRY:integer := ADDERS_CARRYS_FULL_BASE + a;
+            constant ADDR_CARRY:integer := ADDERS_CARRYS_HALF_BASE + a;
             -- base position of the current half adder's carry (row index)
-            constant ADDR_RES: integer := ADDERS_RES_FULL_BASE + a;
+            constant ADDR_RES: integer := ADDERS_RES_HALF_BASE + a;
             begin 
             half_adders: half_adder 
                 port map(

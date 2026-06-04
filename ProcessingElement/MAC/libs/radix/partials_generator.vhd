@@ -20,9 +20,9 @@ architecture Behavioral of partials_generator is
     signal partial_b0: STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
 
 begin
-    partial_b1(DATA_SIZE-2 downto 0) <= data_b(DATA_SIZE-2 downto 0);
+    partial_b1(DATA_SIZE-2 downto 0) <= data_a(DATA_SIZE-2 downto 0);
     partial_b0(DATA_SIZE-2 downto 0) <= (others => '0');
-    partial_b1(7) <= not(data_b(7));
+    partial_b1(7) <= not(data_a(7));
     partial_b0(7) <= '1';
     
     partials_routing: for p in 0 to (MATRIX_PARTIALS_TO_REDUCE-1) generate

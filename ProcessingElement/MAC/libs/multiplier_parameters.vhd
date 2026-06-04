@@ -67,10 +67,10 @@ package body MATRIX_REDUCTION_PARAMETERS is
         matrix_rows_in: INTEGER) 
         return          INTEGER is 
         
-        variable ASCENDING_HEIGHT: integer; 
-        variable DESCENDING_HEIGHT: integer; 
-        variable CONSTANT_HEIGHT: integer;       
-        variable LAST_CARRY_POS: integer;
+        variable ASCENDING_HEIGHT:  INTEGER; 
+        variable DESCENDING_HEIGHT: INTEGER;     
+        variable LAST_CARRY_POS:    INTEGER;
+        variable CONSTANT_HEIGHT:   INTEGER;
     
     begin 
         -- Same encoding used in  get_tree_column_height
@@ -109,11 +109,10 @@ package body MATRIX_REDUCTION_PARAMETERS is
         matrix_rows_out:    INTEGER 
     ) return                INTEGER is 
 
-        variable ASCENDING_HEIGHT: integer; 
-        variable DESCENDING_HEIGHT: integer;     
-        variable LAST_CARRY_POS: integer;
-        variable CONSTANT_HEIGHT: INTEGER;
-        variable HEIGHT: INTEGER;
+        variable ASCENDING_HEIGHT:  INTEGER; 
+        variable DESCENDING_HEIGHT: INTEGER;     
+        variable LAST_CARRY_POS:    INTEGER;
+        variable CONSTANT_HEIGHT:   INTEGER;
     begin      
         -- Example: partials in = 4 partials_out=3, RADIX-4 
         -- | des  |   const         | asc   |
@@ -139,14 +138,12 @@ package body MATRIX_REDUCTION_PARAMETERS is
             return 0;
         else
             if (ASCENDING_HEIGHT < matrix_rows_in) then 
-                HEIGHT:=ASCENDING_HEIGHT;
+                return ASCENDING_HEIGHT-matrix_rows_out; 
             elsif ((DESCENDING_HEIGHT < matrix_rows_in) and ((c>LAST_CARRY_POS))) then 
-                HEIGHT:= DESCENDING_HEIGHT;
+                return DESCENDING_HEIGHT+1-matrix_rows_out;
             else
-                HEIGHT:= CONSTANT_HEIGHT;
+                return CONSTANT_HEIGHT-matrix_rows_out;
             end if;
-            
-            return HEIGHT-matrix_rows_out;
         end if;
                 
     end function;

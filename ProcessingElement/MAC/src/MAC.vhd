@@ -1,6 +1,6 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-use work.MULTIPLIER_PARAMETERS.ALL;
+use work.MATRIX_REDUCTION_PARAMETERS.ALL;
 
 
 entity MAC is 
@@ -32,7 +32,7 @@ architecture Behavioral of MAC is
             data_b:         in STD_LOGIC_VECTOR(7 downto 0); 
             data_acc_in:    in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
         
-            p_out:          out PARTIALS_ARRAY(0 to 3);
+            matrix_out:     out MATRIX(0 to 5);
             data_acc_out:   out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0)
         );
     end component;
@@ -44,10 +44,10 @@ architecture Behavioral of MAC is
             clk:            in STD_LOGIC; 
             reset:          in STD_LOGIC; 
         
-            p_in:           in PARTIALS_ARRAY(0 to 3);
+            matrix_in:      in MATRIX(0 to 5);
             data_acc_in:    in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
             
-            p_out:          out PARTIALS_ARRAY(0 to 1);
+            matrix_out:     out MATRIX(0 to 1);
             data_acc_out:   out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0)
         );
     end component;
@@ -59,15 +59,15 @@ architecture Behavioral of MAC is
             clk:            in STD_LOGIC; 
             reset:          in STD_LOGIC; 
         
-            p_in:           in PARTIALS_ARRAY(0 to 1);
+            matrix_in:           in MATRIX(0 to 1);
             data_acc_in:    in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
             
             r_out:          out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0)
         );
     end component;
     
-    signal partials_12: PARTIALS_ARRAY(0 to 3);
-    signal partials_23: PARTIALS_ARRAY(0 to 1);
+    signal matrix_12: MATRIX(0 to 5);
+    signal matrix_23: MATRIX(0 to 1);
     signal accumulator_12: STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
     signal accumulator_23: STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
     
@@ -85,7 +85,7 @@ begin
             data_b => data_b,
             data_acc_in => data_acc_in,
             
-            p_out => partials_12,
+            matrix_out => matrix_12,
             data_acc_out => accumulator_12
         );
     stage2: MAC_stage2 
@@ -96,10 +96,10 @@ begin
             clk => clk, 
             reset => reset,
         
-            p_in => partials_12,
+            matrix_in => matrix_12,
             data_acc_in => accumulator_12,
             
-            p_out => partials_23,
+            matrix_out => matrix_23,
             data_acc_out => accumulator_23
         );
     stage3: MAC_stage3 
@@ -110,7 +110,7 @@ begin
             clk => clk, 
             reset => reset,
         
-            p_in => partials_23,
+            matrix_in => matrix_23,
             data_acc_in => accumulator_23,
             
             r_out => r_out

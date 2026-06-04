@@ -9,8 +9,8 @@ entity reduction_matrix_test is
 end reduction_matrix_test;
 
 architecture Behavioral of reduction_matrix_test is
-    constant IN_DIM: INTEGER := 8;
-    constant OUT_DIM: INTEGER := 6;
+    constant IN_DIM: INTEGER := 6;
+    constant OUT_DIM: INTEGER := 4;
         
     component reduction_matrix is
         Generic (
