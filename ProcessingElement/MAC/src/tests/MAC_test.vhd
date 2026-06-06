@@ -16,18 +16,15 @@ end MAC_test;
 
 architecture Behavioral of MAC_test is
     component MAC is 
-        Generic (
-            ACC_SIZE: INTEGER := 32
-        );
         Port ( 
             clk: in STD_LOGIC; 
             reset: in STD_LOGIC; 
         
             data_a:         in STD_LOGIC_VECTOR(7 downto 0);
             data_b:         in STD_LOGIC_VECTOR(7 downto 0); 
-            data_acc_in:    in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
+            data_acc_in:    in STD_LOGIC_VECTOR(31 downto 0); 
             
-            r_out:          out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0)
+            r_out:          out STD_LOGIC_VECTOR(31 downto 0)
         );
     end component;
     signal clk: STD_LOGIC; 
@@ -43,6 +40,8 @@ architecture Behavioral of MAC_test is
     shared variable mul_error_count: integer := 0;
 begin
     MAC_test: MAC 
+       
+        
         port map (
             clk => clk,
             reset => reset,
@@ -69,7 +68,7 @@ begin
             for j in -128 to 127 loop 
                 data_a <= STD_LOGIC_VECTOR(to_signed(i,8));
                 data_b <= STD_LOGIC_VECTOR(to_signed(j,8));
-                wait for 40ns; 
+                wait for 50ns; 
                 if not(signed(r_out) = to_signed(i,32)*to_signed(j,32)) then
                     report "Error during estimation of 0 + (" 
                         & integer'image(i) 
@@ -89,7 +88,7 @@ begin
                 data_a <= STD_LOGIC_VECTOR(to_signed(i,8));
                 data_b <= STD_LOGIC_VECTOR(to_signed(i,8));
                 data_acc_in <= STD_LOGIC_VECTOR(to_signed(j,32));
-                wait for 40ns; 
+                wait for 50ns; 
                 if not(signed(r_out) = (to_signed(i,32)*to_signed(i,32))+to_signed(j,32)) then
                     report "Error during estimation of "
                         & integer'image(j) 
