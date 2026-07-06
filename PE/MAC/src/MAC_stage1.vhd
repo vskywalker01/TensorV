@@ -1,3 +1,7 @@
+-- Definition of MAC reduction stage. 
+
+-- This stage performs a multiplication and reduction between the two 8-bit inputs into two rows ready to be summed by the second stage. 
+-- At the same time, it propagates the values of the accumulator input to the next stage to maintain coherenc eof the pipeline.
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -24,15 +28,26 @@ entity MAC_stage1 is
 end MAC_stage1;
 
 architecture Behavioral of MAC_stage1 is     
-    signal partials: PARTIALS(7 downto 0,8 downto 0);
-
-    signal matrix_r0: MATRIX(7 downto 0,15 downto 0);
-    signal matrix_r1: MATRIX(7 downto 0,15 downto 0);
-    signal matrix_r2: MATRIX(7 downto 0,15 downto 0);
-    signal matrix_r3: MATRIX(7 downto 0,15 downto 0);
-    signal matrix_r4: MATRIX(7 downto 0,15 downto 0);
+    constant DATA_SIZE: INTEGER := 8;
+    
+    -- Choosing Baugh-Wooley generator for the partials 
+    constant MATRIX_PARTIAL_SIZE: INTEGER := get_bw_partial_size(DATA_SIZE);
+    constant MATRIX_PARTIAL_SHIFT: INTEGER := get_bw_partial_shift;
+    constant MATRIX_HEIGHT: INTEGER := get_bw_partials_to_reduce(DATA_SIZE);
+    constant MATRIX_WIDTH: INTEGER := get_matrix_width(MATRIX_PARTIAL_SIZE, MATRIX_HEIGHT, MATRIX_PARTIAL_SHIFT);
+    
+    signal partials: PARTIALS(MATRIX_HEIGHT-1 downto 0,MATRIX_PARTIAL_SIZE-1 downto 0);
+    
+    -- Performing 5 reduction steps: 8->6->4->3->2
+    signal matrix_r0: MATRIX(MATRIX_HEIGHT-1 downto 0,MATRIX_WIDTH-1 downto 0);
+    signal matrix_r1: MATRIX(MATRIX_HEIGHT-1 downto 0,MATRIX_WIDTH-1 downto 0);
+    signal matrix_r2: MATRIX(MATRIX_HEIGHT-1 downto 0,MATRIX_WIDTH-1 downto 0);
+    signal matrix_r3: MATRIX(MATRIX_HEIGHT-1 downto 0,MATRIX_WIDTH-1 downto 0);
+    signal matrix_r4: MATRIX(MATRIX_HEIGHT-1 downto 0,MATRIX_WIDTH-1 downto 0);
 
 begin 
+    
+    -- Assigning the generator component 
     generator: bw_generator
         port map(
             data_a => data_a,
@@ -40,18 +55,19 @@ begin
             
             partials_out => partials
         );
-        
+    
+    -- Performing routing from the PARTIAL type to the MATRIX type (applying shifting to the partials)
     partials_routing: for p in 0 to 7 generate
         col: for c in 0 to 8 generate 
-            constant SHIFT_LENGTH: INTEGER := 1; 
-            constant SHIFT: INTEGER := p*SHIFT_LENGTH;  
+            constant SHIFT: INTEGER := p*MATRIX_PARTIAL_SHIFT;  
             constant COL_POS: INTEGER := c + SHIFT;
-            constant ROW_POS: INTEGER := p when (COL_POS<9) else (p-COL_POS+8);
+            constant ROW_POS: INTEGER := p when (COL_POS<MATRIX_PARTIAL_SIZE) else (p-COL_POS+(MATRIX_PARTIAL_SIZE-1));
         begin 
             matrix_r0(ROW_POS,COL_POS) <= partials(p,c);
         end generate; 
     end generate;  
 
+    -- Placing layer reductions
     matrix_86: adder_reductor
         generic map(
             MATRIX_ROWS_IN => 8,
@@ -105,11 +121,12 @@ begin
             output => matrix_r4
         );
         
-    
+    -- Main pipeline process
     pipeline_latch: process(clk) 
-        variable TREE_HEIGHT: integer;
     begin 
         if (rising_edge(clk)) then
+        
+            -- If reset=1 -> force outputs to '0's
             if (reset='1') then 
                 data_acc_out <= (others => '0');
             else 
@@ -123,6 +140,10 @@ begin
                     matrix_out2(c) <= '0'; 
                 end loop; 
             else
+                -- the two rows obtained by the reduction are enlarget to match the size of the accumulator 
+                
+                -- Because the sub between the two rows will result in the last bit inverted (BW generator), the last bits of the second row are inverted in order to avoid 
+                -- an adjustment in the pipeline second stage
                 matrix_out1(0) <= matrix_r4(0,0); 
                 for c in 1 to 15 loop
                     matrix_out1(c) <= matrix_r4(0,c);

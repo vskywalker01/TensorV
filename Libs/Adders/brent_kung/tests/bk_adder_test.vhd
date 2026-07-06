@@ -1,3 +1,5 @@
+-- Exaustive testbench of the Brent-Kung adder.
+
 library IEEE; 
 
 use IEEE.STD_LOGIC_1164.ALL;
@@ -9,6 +11,8 @@ entity bk_adder_test is
 end bk_adder_test;
 
 architecture Behavioral of bk_adder_test is
+
+    -- Edit this value to change the size of the vectors 
     CONSTANT DIM: INTEGER := 8;
 
     signal a,b,r: STD_LOGIC_VECTOR(DIM-1 downto 0);
@@ -31,9 +35,11 @@ begin
         
     process 
     begin 
+        -- Setting carry in fixed to 0
         c_in <= '0';
         wait for 10ns; 
         
+        -- Testing all the combinations of the inputs 
         for i in 0 to (2**DIM) loop 
             for j in 0 to (2**DIM) loop 
                 a <= STD_LOGIC_VECTOR(to_signed(i,DIM));

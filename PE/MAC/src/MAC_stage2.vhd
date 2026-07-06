@@ -1,3 +1,7 @@
+-- Definition of the final sum stage for the MAC pipeline. 
+
+-- In this stage, the two rows generated from the reduction stage are summed together with the accumulator using a Brent-kung adder
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
@@ -26,7 +30,18 @@ architecture Behavioral of MAC_stage2 is
     signal res: STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
     
 begin 
+    -- Instead of using two adders (sum the first two rows and then the accumulator), another reduction based on carry save approach is used to avoid complexity. 
+
+    -- * * * * * * * * * * * * * * * *  <- accumulator   
+    -- * * * * * * * * * * * * * * * *  <- first row (from reduction)
+    -- * * * * * * * * * * * * * * *    <- recond row (from reduction) 
+    -- |     full adders           |     
+    --                               ^ 
+    --                             half adder
+    
     first_reduction: for c in 0 to (ACC_SIZE-1) generate 
+    
+        -- The first bits (one from the accumulator and one from the first row) are processed using an half adder
         c0: if (c=0) generate 
             half: half_adder 
                 port map (
@@ -37,6 +52,8 @@ begin
                     c => c_line(1)   
                 );    
         end generate; 
+        
+        -- The other bits are processed using full adders (the final carry is discarded because we do not take account for overflows)
         cn: if (c>0) generate
             full: full_adder 
                 port map (
@@ -49,6 +66,9 @@ begin
                 );
         end generate; 
     end generate; 
+    
+    -- The outputs of the preliminar carry save reduction (one result line and one carry line) are processed using a Brent-Kung adder with carry in = 0
+    
     c_line(0) <= '0';
     
     adder: bk_adder
@@ -64,6 +84,7 @@ begin
             c_out => open
         );
     
+    -- The output is simply latched
     pipeline_latch: process(clk) 
     begin 
         if (rising_edge(clk)) then

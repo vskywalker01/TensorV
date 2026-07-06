@@ -1,3 +1,5 @@
+-- Testbench of the adder reductor. The user can edit the parameters to verify the behavior of all the layers 
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
@@ -33,13 +35,17 @@ begin
             output => output
         );
     test: process
-    begin 
+    begin
+
+        -- Setting all input bits to 0 (verify the output matrix shape)
         for r in 0 to (MATRIX_ROWS_IN-1) loop
             for c in 0 to (MATRIX_WIDTH-1) loop
                 input(r,c) <= '0';
             end loop;
         end loop;
         wait for 10ns;
+
+        -- Setting al the input bits to 1 (verify the adder displacement)
         for r in 0 to (MATRIX_ROWS_IN-1) loop
             for c in 0 to (MATRIX_WIDTH-1) loop
                 input(r,c) <= '1';

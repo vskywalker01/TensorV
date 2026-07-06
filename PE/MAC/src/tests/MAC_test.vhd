@@ -1,21 +1,17 @@
+-- Exaustive test for MAC unit. The test performs two steps: 
+-- * Multiplication test, where every combination between the 8-bit inputs is tested for the multiplication 
+-- * Accumulation test: where all the possible values of the accumulator input are summed with the multiplication between inputs with the same value. 
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
 use IEEE.NUMERIC_STD.ALL;
-
--- Uncomment the following library declaration if instantiating
--- any Xilinx leaf cells in this code.
---library UNISIM;
---use UNISIM.VComponents.all;
 
 entity MAC_test is
 --  Port ( );
 end MAC_test;
 
 architecture Behavioral of MAC_test is
-    constant ACC_SIZE: INTEGER := 32;
+    constant ACC_SIZE: INTEGER := 20;
 
     component MAC is 
         Generic (
@@ -67,10 +63,16 @@ begin
     end process; 
     process 
     begin 
+        
+        -- Reset 
         reset <= '1'; 
         wait for 30ns; 
         reset <= '0'; 
-        data_acc_in <= x"00000000";
+        
+        -- Setting accumulator to 0
+        data_acc_in <= (others => '0');
+        
+        -- testing all combinations between A and B
         for i in -128 to 127 loop 
             for j in -128 to 127 loop 
                 data_a <= STD_LOGIC_VECTOR(to_signed(i,8));
@@ -90,19 +92,20 @@ begin
             end loop;
         end loop;
         
-        for j in -128 to 127 loop 
-            for i in -128 to 127 loop 
-                data_a <= STD_LOGIC_VECTOR(to_signed(i,8));
-                data_b <= STD_LOGIC_VECTOR(to_signed(i,8));
-                data_acc_in <= STD_LOGIC_VECTOR(to_signed(j,ACC_SIZE));
+        -- Setting A=B and testing all combinations 
+        for i in -524288 to 524288 loop 
+            for j in -128 to 127 loop 
+                data_a <= STD_LOGIC_VECTOR(to_signed(j,8));
+                data_b <= STD_LOGIC_VECTOR(to_signed(j,8));
+                data_acc_in <= STD_LOGIC_VECTOR(to_signed(i,ACC_SIZE));
                 wait for 50ns; 
-                if not(signed(r_out) = (to_signed(i,ACC_SIZE)*to_signed(i,ACC_SIZE))+to_signed(j,ACC_SIZE)) then
+                if not(signed(r_out) = ((to_signed(j,ACC_SIZE)*to_signed(j,ACC_SIZE)))+to_signed(i,ACC_SIZE)) then
                     report "Error during estimation of "
-                        & integer'image(j) 
+                        & integer'image(i) 
                         & " + (" 
-                        & integer'image(i) 
+                        & integer'image(j) 
                         & "*" 
-                        & integer'image(i) 
+                        & integer'image(j) 
                         & ") got " 
                         & integer'image(to_integer(signed(r_out)))
                     severity error; 

@@ -1,4 +1,9 @@
--- definition of reduction matrix
+-- definition of parametric adder reductor based on full adders and half adders. 
+-- The reductor represents the allocation of full and half adders necessary to reduce a matrix of partials/inputs to a specific target. 
+
+-- The architecture generates automatically a reduction layer considering the shape and the valid bits in the matrix, as explained in the REDUCTORS package. 
+
+-- This component can be used for elaborating automatically Dadda/Wallace trees in a parametric way without introducing complexity in the harware architecture.  
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -9,12 +14,12 @@ use work.ADDERS.half_adder;
 
 entity adder_reductor is
     Generic (
-        MATRIX_ROWS_IN:         INTEGER;
-        MATRIX_ROWS_OUT:        INTEGER;
-        MATRIX_WIDTH:           INTEGER; 
-        MATRIX_HEIGHT:          INTEGER; 
-        MATRIX_STEP_LENGTH:     INTEGER;
-        MATRIX_PARTIAL_SIZE:    INTEGER
+        MATRIX_ROWS_IN:         INTEGER;  -- Number of valid rows in the matrix to reduce 
+        MATRIX_ROWS_OUT:        INTEGER;  -- Number of target rows to reach after the reduction in the specific layer 
+        MATRIX_WIDTH:           INTEGER;  -- Width of the entire matrix (used for the definition of the size of the input/output matrix)
+        MATRIX_HEIGHT:          INTEGER;  -- Height of the entire matrix (used for the definition of the size of the input/output matrix) 
+        MATRIX_STEP_LENGTH:     INTEGER;  -- Shift value of the partials in the matrix (it is used to estimate which bits in the matrix are valid or not)
+        MATRIX_PARTIAL_SIZE:    INTEGER   -- Size of the partials in the matrix (for example a baugh-wooley reductor generates partials of 9 bits )
     );
     Port ( 
         input: in MATRIX(MATRIX_HEIGHT-1 downto 0,MATRIX_WIDTH-1 downto 0);
@@ -24,28 +29,60 @@ end adder_reductor;
 
 
 architecture Behavioral of adder_reductor is
-    function get_generated_carrys( 
-        c:                  INTEGER;
-        matrix_rows_in:     INTEGER;
-        matrix_rows_out:    INTEGER 
-    ) return                INTEGER is 
 
-        constant ASCENDING_HEIGHT:  INTEGER := (c+MATRIX_STEP_LENGTH)/MATRIX_STEP_LENGTH;
+    -- Functions used for the placing of the adders -- 
+
+    -- get_generated_carrys estimates the carrys generated from the specific column to get a reduction from matrix_rows_in to matrix_rows_out. 
+
+    -- | ------- matrix_width ------ |                          | ------- matrix_width ------ |  
+    -- * * * * * * * * * * * * * * * *  -                       * * * * * * * * * * * * * * * *  -                  - 
+    --   * * * * * * * * * * * * * *    |                         * * * * * * * * * * * * * *    |                  |
+    --     * * * * * * * * * * * *      |                           * * * * * * * * * * * *      |                  - Matrix rows out 
+    --       * * * * * * * * * *        |                             * * * * * * * * * *        |                  |
+    --         * * * * * * * *          - Matrix height    ->           * * * * * * * *          - Matrix height    | 
+    --           * * * * * *            - MAtrix partials in            * * * * * * *            |                  -
+    --             * * * *              |                                                        |
+    --               * *                -                                                        - 
+    --                             | | 
+    --                             Matrix step length                               |         |  <- Ascending phase 
+    --                                                                  |           |            <- Constant phase 
+    --                                                          |       |                        <- descending phase 
+    --                                                                  ^ 
+    --                                                                  Last carry pos 
+
+    function get_generated_carrys( 
+        c:                  INTEGER;    -- column position where the number of carrys should be estimated 
+        matrix_rows_in:     INTEGER;    -- Number of input partials to reduce 
+        matrix_rows_out:    INTEGER     -- Number of target partials 
+    ) return                INTEGER is 
+        
+        -- The following values are used to estimate the height of the matrix in different phases. 
+        -- They are obtained using empirical observations of the matrix behavior between reductions from one layer to another
+
+        constant ASCENDING_HEIGHT:  INTEGER := (c+MATRIX_STEP_LENGTH)/MATRIX_STEP_LENGTH; 
         constant DESCENDING_HEIGHT: INTEGER := (MATRIX_WIDTH + MATRIX_STEP_LENGTH -c -1)/MATRIX_STEP_LENGTH;
         constant LAST_CARRY_POS:    INTEGER := (MATRIX_STEP_LENGTH*(MATRIX_HEIGHT-matrix_rows_in))+(MATRIX_PARTIAL_SIZE);
         constant CONSTANT_HEIGHT:   INTEGER := matrix_rows_in;
     begin              
+        
+        -- Returns 0 if the column is not valid 
         if (c<0 or c>(MATRIX_WIDTH-1)) then
             return 0; 
         end if; 
         
+        -- If the the target height is already met -> return 0 carry generated from the adders
         if (ASCENDING_HEIGHT <= matrix_rows_out or DESCENDING_HEIGHT < matrix_rows_out) then 
             return 0;
-        else
+        else 
+            -- If in the ascending phase there are more input rows than the target -> return the difference 
             if (ASCENDING_HEIGHT < matrix_rows_in) then 
                 return ASCENDING_HEIGHT-matrix_rows_out; 
+            
+            -- If in the descending height there are more input rows than the target -> return the difference +1 
             elsif ((DESCENDING_HEIGHT < matrix_rows_in) and ((c>LAST_CARRY_POS))) then 
                 return DESCENDING_HEIGHT+1-matrix_rows_out;
+            
+            -- If in the costant height there are more input rows than the target -> return the difference
             else
                 return CONSTANT_HEIGHT-matrix_rows_out;
             end if;
@@ -53,10 +90,11 @@ architecture Behavioral of adder_reductor is
                 
     end function;
     
+    -- get_half_adders is used to estimate the number of half adders necessary for the reduction of the specific column. 
     function get_half_adders( 
-        c:                  INTEGER;
-        matrix_rows_in:     INTEGER;
-        matrix_rows_out:    INTEGER 
+        c:                  INTEGER;    -- column to reduce 
+        matrix_rows_in:     INTEGER;    -- input rows  
+        matrix_rows_out:    INTEGER     -- target rows 
     ) return                INTEGER is
 
         constant PREVIOUS_CARRYS: INTEGER := get_generated_carrys(c-1,matrix_rows_in,matrix_rows_out);
@@ -72,10 +110,11 @@ architecture Behavioral of adder_reductor is
         
     end function;
     
+    -- get_half_adders is used to estimate the number of full adders necessary for the reduction of the specific column.
     function get_full_adders( 
-        c:                  INTEGER;
-        matrix_rows_in:     INTEGER;
-        matrix_rows_out:    INTEGER  
+        c:                  INTEGER;    -- column to reduce 
+        matrix_rows_in:     INTEGER;    -- input rows
+        matrix_rows_out:    INTEGER     -- target rows 
     ) return                INTEGER is 
     
         constant PREVIOUS_CARRYS: INTEGER := get_generated_carrys(c-1,matrix_rows_in,matrix_rows_out);
@@ -112,6 +151,8 @@ begin
         constant ADDERS_RES_HALF_BASE: integer := ADDERS_IN_FULL_BASE+FULL_ADDERS; 
         constant ADDERS_CARRYS_FULL_BASE: integer := MATRIX_ROWS_OUT-(FULL_ADDERS+HALF_ADDERS);
         constant ADDERS_CARRYS_HALF_BASE: integer := ADDERS_CARRYS_FULL_BASE + FULL_ADDERS;
+
+        -- The adders are placed in the regions that should be reduced
         
         begin    
         -- Routing inputs that are untouched by the tree reduction 

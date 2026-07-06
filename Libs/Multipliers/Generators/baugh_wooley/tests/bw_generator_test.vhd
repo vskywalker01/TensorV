@@ -1,3 +1,5 @@
+-- Testbench of the bw_generator.
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
@@ -24,7 +26,9 @@ begin
             partials_out => partials_out
         );
     test: process
-    begin 
+    begin
+
+        -- Setting two random variables to verify the mapping of the generator
         a <= "11111111";
         b <= "01011010";
         wait for 10ns;        

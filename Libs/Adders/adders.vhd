@@ -1,3 +1,12 @@
+-- Definition of ADDERS package. It includes: 
+-- * Definition of full adder 
+-- * Definition of half adder 
+-- * Definition of Brent-Kung adder 
+
+-- To use one of this componens import this package in your compiler (for example VIVADO) and add the following line 
+-- use work.ADDERS.ALL 
+
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
