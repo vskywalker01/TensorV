@@ -7,25 +7,28 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 use work.ADDERS.ALL;
 
-entity MAC_stage2 is
+entity accumulation_stage is
     Generic (
         ACC_SIZE: integer := 32
     );
     Port ( 
-        clk:            in STD_LOGIC; 
-        reset:          in STD_LOGIC; 
+        clk:                    in STD_LOGIC; 
+        reset:                  in STD_LOGIC; 
     
-        matrix_in1:     in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
-        matrix_in2:     in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
-        data_acc_in:    in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
+        matrix_in1:             in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
+        matrix_in2:             in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
+        data_acc_in:            in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
+        valid_in:               in STD_LOGIC;
         
-        data_out:   out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0)
+        data_out:               out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0)
+        
     );
-end MAC_stage2;
+end accumulation_stage;
 
-architecture Behavioral of MAC_stage2 is     
+architecture Behavioral of accumulation_stage is     
     signal r_line: STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
     signal c_line: STD_LOGIC_VECTOR(ACC_SIZE downto 0); 
+    
     
     signal res: STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
     
@@ -39,32 +42,20 @@ begin
     --                               ^ 
     --                             half adder
     
-    first_reduction: for c in 0 to (ACC_SIZE-1) generate 
-    
-        -- The first bits (one from the accumulator and one from the first row) are processed using an half adder
-        c0: if (c=0) generate 
-            half: half_adder 
-                port map (
-                    a => data_acc_in(0),
-                    b => matrix_in1(0), 
-                    
-                    r => r_line(0),
-                    c => c_line(1)   
-                );    
-        end generate; 
+    preprocessing: for c in 0 to (ACC_SIZE-1) generate  
+        -- The bits are processed using full adders (the final carry is discarded because we do not take account for overflows)
         
-        -- The other bits are processed using full adders (the final carry is discarded because we do not take account for overflows)
-        cn: if (c>0) generate
-            full: full_adder 
-                port map (
-                    a => data_acc_in(c), 
-                    b => matrix_in1(c),
-                    c_in => matrix_in2(c),
-                    
-                    r => r_line(c),
-                    c_out => c_line(c+1)
-                );
-        end generate; 
+         
+        
+        full: full_adder 
+            port map (
+                a => data_acc_in(c), 
+                b => matrix_in1(c),
+                c_in => matrix_in2(c),
+                
+                r => r_line(c),
+                c_out => c_line(c+1)
+            );
     end generate; 
     
     -- The outputs of the preliminar carry save reduction (one result line and one carry line) are processed using a Brent-Kung adder with carry in = 0
@@ -91,7 +82,11 @@ begin
             if (reset='1') then 
                 data_out <= (others => '0');
             else 
-                data_out <= res;
+                if (valid_in = '1') then 
+                    data_out <= res;
+                else 
+                    data_out <= data_acc_in;
+                end if; 
             end if;
         end if; 
     end process;     

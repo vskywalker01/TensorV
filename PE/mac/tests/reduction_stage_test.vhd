@@ -2,12 +2,12 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity MAC_stage1_test is
+entity reduction_stage_test is
 --  Port ( );
-end MAC_stage1_test;
+end reduction_stage_test;
 
-architecture Behavioral of MAC_stage1_test is
-    component MAC_stage1 is
+architecture Behavioral of reduction_stage_test is
+    component reduction_stage is
         Generic (
             ACC_SIZE: INTEGER := 32
         );
@@ -35,7 +35,7 @@ architecture Behavioral of MAC_stage1_test is
     signal matrix_out2: STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
     
 begin
-    stage: MAC_stage1 
+    stage: reduction_stage 
         Port map ( 
             clk => clk,
             reset => reset, 

@@ -2,14 +2,14 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity MAC_stage2_test is
+entity accumulation_stage_test is
 --  Port ( );
-end MAC_stage2_test;
+end accumulation_stage_test;
 
-architecture Behavioral of MAC_stage2_test is
+architecture Behavioral of accumulation_stage_test is
     constant ACC_SIZE: INTEGER := 32;
 
-    component MAC_stage2 is
+    component accumulation_stage is
         Generic (
             ACC_SIZE: INTEGER := 32
         );
@@ -33,7 +33,7 @@ architecture Behavioral of MAC_stage2_test is
     signal data_out: STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
    
 begin
-    stage: MAC_stage2 
+    stage: accumulation_stage 
         Port map ( 
             clk => clk,
             reset => reset, 
