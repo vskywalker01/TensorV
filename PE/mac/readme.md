@@ -17,3 +17,6 @@ The second stage performs:
 
 The architecture can achieve performances up to 200Mhz on FPGA with latency of 2 clock cycles. 
 
+<p align=center> 
+<img width="900" alt="PE" src="docs/MUL.png" />
+</p>
