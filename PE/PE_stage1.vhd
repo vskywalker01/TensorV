@@ -7,7 +7,6 @@ entity PE_stage1 is
         DATA_SIZE: INTEGER := 8; 
         ACCUMULATOR_SIZE: INTEGER := 20; 
         QUEUE_SIZE: INTEGER := 8;
-        
         ACTIVATION_INIT_BIT: INTEGER := 6; 
         WEIGHT_INIT_BIT: INTEGER := 5;
         ACCUMULATOR_INIT_BIT: INTEGER := 4;
@@ -15,7 +14,6 @@ entity PE_stage1 is
         WEIGHT_VALID_BIT:   INTEGER := 2; 
         PROCESS_ELEMENT_BIT: INTEGER := 1; 
         PROCESS_ACCUMULATOR_BIT: INTEGER := 0
-        
     );
     Port ( 
         clk:                        in STD_LOGIC;  
@@ -70,7 +68,7 @@ begin
             data_out => activation_out
         );
     
-    shift_activation <= (control_in(PROCESS_ACCUMULATOR_BIT) and control_in(ACTIVATION_VALID_BIT)) or control_in(PROCESS_ELEMENT_BIT);
+    shift_activation <= control_in(PROCESS_ACCUMULATOR_BIT) or control_in(PROCESS_ELEMENT_BIT);
     shift_weight <= control_in(PROCESS_ELEMENT_BIT);
 
     stage1: process(clk) is 

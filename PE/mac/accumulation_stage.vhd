@@ -12,25 +12,17 @@ entity accumulation_stage is
         ACC_SIZE: integer := 32
     );
     Port ( 
-        clk:                    in STD_LOGIC; 
-        reset:                  in STD_LOGIC; 
-    
         matrix_in1:             in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
         matrix_in2:             in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
         data_acc_in:            in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
-        valid_in:               in STD_LOGIC;
         
-        data_out:               out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0)
-        
+        data_out:               out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0)   
     );
 end accumulation_stage;
 
 architecture Behavioral of accumulation_stage is     
     signal r_line: STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
     signal c_line: STD_LOGIC_VECTOR(ACC_SIZE downto 0); 
-    
-    
-    signal res: STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
     
 begin 
     -- Instead of using two adders (sum the first two rows and then the accumulator), another reduction based on carry save approach is used to avoid complexity. 
@@ -71,25 +63,7 @@ begin
             b => c_line(ACC_SIZE-1 downto 0),
             c_in => '0', 
             
-            r => res,
+            r => data_out,
             c_out => open
-        );
-    
-    -- The output is simply latched
-    pipeline_latch: process(clk) 
-    begin 
-        if (rising_edge(clk)) then
-            if (reset='1') then 
-                data_out <= (others => '0');
-            else 
-                if (valid_in = '1') then 
-                    data_out <= res;
-                else 
-                    data_out <= data_acc_in;
-                end if; 
-            end if;
-        end if; 
-    end process;     
-    
-    
+        );    
 end architecture;

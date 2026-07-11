@@ -42,37 +42,30 @@ architecture Behavioral of PE_stage3 is
             ACC_SIZE: integer := 32
         );
         Port ( 
-            clk:                    in STD_LOGIC; 
-            reset:                  in STD_LOGIC; 
         
             matrix_in1:             in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
             matrix_in2:             in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
             data_acc_in:            in STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
-            valid_in:               in STD_LOGIC;
             
             data_out:               out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0)
         );
     end component;
-    signal accumulator: STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
-    signal valid: STD_LOGIC;
+    
+    signal accumulator, accumulation_out: STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
+    signal valid_in,valid_out: STD_LOGIC;
 begin
     accumulation: accumulation_stage
         generic map (
             ACC_SIZE => ACCUMULATOR_SIZE
         ) 
         port map (
-            clk => clk, 
-            reset => reset, 
             data_acc_in => accumulator,
             matrix_in1 => reduction1_in, 
             matrix_in2 => reduction2_in, 
-            valid_in => valid,
             
-            data_out => accumulator
+            data_out => accumulation_out
             
         ); 
-
-    valid <= control_in(PROCESS_ACCUMULATOR_BIT) or control_in(PROCESS_ELEMENT_BIT);
 
     stage3: process(clk) is 
     begin 
@@ -84,15 +77,21 @@ begin
                 accumulator_out <= (others => '0');
                 accumulator <= (others => '0');
             else 
-            
+                if (control_in(ACCUMULATOR_INIT_BIT) = '1') then
+                    accumulator <= (others => '0');
+                else    
+                    if (control_in(PROCESS_ELEMENT_BIT) = '1')  then 
+                        accumulator <= accumulation_out;   
+                    end if;                  
+                end if;
+                
                 weight_out <= weight_forward_in;
                 activation_out <= activation_forward_in;
                 control_out <= control_in;
                 
-                
-                
+
                 if (control_in(PROCESS_ACCUMULATOR_BIT) = '1') then 
-                    accumulator_out <= accumulator; 
+                    accumulator_out <= accumulation_out; 
                 end if;
             end if;
         end if; 

@@ -13,17 +13,12 @@ entity reduction_stage is
     Generic (
         ACC_SIZE: INTEGER := 32
     );
-    Port ( 
-        clk: in STD_LOGIC; 
-        reset: in STD_LOGIC; 
-    
+    Port (    
         data_a:                 in STD_LOGIC_VECTOR(7 downto 0);
         data_b:                 in STD_LOGIC_VECTOR(7 downto 0);  
-        valid_in:               in STD_LOGIC; 
 
         matrix_out1:            out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
         matrix_out2:            out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
-        valid_out:              out STD_LOGIC
 
     );
 end reduction_stage;
@@ -123,42 +118,21 @@ begin
         );
         
     -- Main pipeline process
-    pipeline_latch: process(clk) 
-    begin 
-        if (rising_edge(clk)) then
-        
-            -- If reset=1 -> force outputs to '0's
-            
-            if (reset = '1') then 
-                for c in 0 to (ACC_SIZE-1) loop
-                    matrix_out1(c) <= '0'; 
-                    matrix_out2(c) <= '0'; 
-                end loop; 
-                valid_out <= '0';
-            else
-                if (valid_in = '1') then
-                    -- the two rows obtained by the reduction are enlarget to match the size of the accumulator 
+    
+    matrix_out1(0) <= matrix_r4(0,0); 
+    matrix_out2(0) <= '0';
+    -- the two rows obtained by the reduction are enlarget to match the size of the accumulator 
                     
-                    -- Because the sum between the two rows will result in the last bit inverted (BW generator), the last bits of the second row are inverted in order to avoid 
-                    -- an adjustment in the pipeline second stage
-                    matrix_out1(0) <= matrix_r4(0,0); 
-                    matrix_out2(0) <= '0';
-                    
-                    for c in 1 to 15 loop
-                        matrix_out1(c) <= matrix_r4(0,c);
-                        matrix_out2(c) <= matrix_r4(1,c);
-                    end loop; 
-                     
-                    for c in 15 to (ACC_SIZE-1) loop 
-                        matrix_out1(c) <= matrix_r4(0,15);
-                        matrix_out2(c) <= not(matrix_r4(1,15));
-                    end loop;
-                end if; 
-                valid_out <= valid_in;
-                
-            end if; 
-            
-          
-        end if; 
-    end process;     
+    -- Because the sum between the two rows will result in the last bit inverted (BW generator), the last bits of the second row are inverted in order to avoid 
+    -- an adjustment in the pipeline second stage
+    
+    lower_bits: for c in 1 to 14 generate
+        matrix_out1(c) <= matrix_r4(0,c);
+        matrix_out2(c) <= matrix_r4(1,c);
+    end generate; 
+    
+    higher_bits: for c in 15 to (ACC_SIZE-1) generate
+        matrix_out1(c) <= matrix_r4(0,15);
+        matrix_out2(c) <= not(matrix_r4(1,15));
+    end generate;
 end architecture;

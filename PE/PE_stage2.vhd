@@ -44,16 +44,11 @@ architecture Behavioral of PE_stage2 is
                 ACC_SIZE: INTEGER := 32
             );
         Port ( 
-            clk: in STD_LOGIC; 
-            reset: in STD_LOGIC; 
-        
             data_a:                 in STD_LOGIC_VECTOR(7 downto 0);
             data_b:                 in STD_LOGIC_VECTOR(7 downto 0);  
-            valid_in:               in STD_LOGIC; 
     
             matrix_out1:            out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
-            matrix_out2:            out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
-            valid_out:              out STD_LOGIC
+            matrix_out2:            out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0)
     
         );
     end component;
@@ -64,14 +59,11 @@ begin
             ACC_SIZE => ACCUMULATOR_SIZE
         )
         port map (
-            clk => clk, 
-            reset => reset,
             data_a => weight_in, 
             data_b => activation_in, 
-            valid_in => control_in(PROCESS_ELEMENT_BIT), 
+
             matrix_out1 => reduction1, 
-            matrix_out2 => reduction2,
-            valid_out => open
+            matrix_out2 => reduction2
         );
 
     stage2: process(clk) is 

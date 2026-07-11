@@ -43,15 +43,13 @@ architecture Behavioral of PE is
             DATA_SIZE: INTEGER := 8; 
             ACCUMULATOR_SIZE: INTEGER := 20; 
             QUEUE_SIZE: INTEGER := 8;
-            
             ACTIVATION_INIT_BIT: INTEGER := 6; 
             WEIGHT_INIT_BIT: INTEGER := 5;
             ACCUMULATOR_INIT_BIT: INTEGER := 4;
             ACTIVATION_VALID_BIT: INTEGER := 3; 
             WEIGHT_VALID_BIT:   INTEGER := 2; 
             PROCESS_ELEMENT_BIT: INTEGER := 1; 
-            PROCESS_ACCUMULATOR_BIT: INTEGER := 0
-            
+            PROCESS_ACCUMULATOR_BIT: INTEGER := 0      
         );
         Port ( 
             clk:                        in STD_LOGIC;  
