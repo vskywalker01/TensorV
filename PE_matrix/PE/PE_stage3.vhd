@@ -1,21 +1,8 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
+use work.PE_MATRIX_PARAMETERS.ALL;
 
 entity PE_stage3 is
-    Generic (
-        DATA_SIZE: INTEGER := 8; 
-        ACCUMULATOR_SIZE: INTEGER := 20; 
-        QUEUE_SIZE: INTEGER := 8;
-        
-        ACTIVATION_INIT_BIT: INTEGER := 6; 
-        WEIGHT_INIT_BIT: INTEGER := 5;
-        ACCUMULATOR_INIT_BIT: INTEGER := 4;
-        ACTIVATION_VALID_BIT: INTEGER := 3; 
-        WEIGHT_VALID_BIT:   INTEGER := 2; 
-        PROCESS_ELEMENT_BIT: INTEGER := 1; 
-        PROCESS_ACCUMULATOR_BIT: INTEGER := 0
-        
-    );
     Port ( 
         clk:                        in STD_LOGIC;  
         reset:                      in STD_LOGIC;                 
@@ -31,7 +18,8 @@ entity PE_stage3 is
         accumulator_out:            out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
         
         reduction1_in:             in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0); 
-        reduction2_in:             in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0)
+        reduction2_in:             in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
+        reduction_valid_in:        in STD_LOGIC 
         
     );
 end PE_stage3;
@@ -80,19 +68,19 @@ begin
                 if (control_in(ACCUMULATOR_INIT_BIT) = '1') then
                     accumulator <= (others => '0');
                 else    
-                    if (control_in(PROCESS_ELEMENT_BIT) = '1')  then 
+                    if (reduction_valid_in = '1')  then 
                         accumulator <= accumulation_out;   
                     end if;                  
                 end if;
                 
+                if (control_in(ACCUMULATOR_VALID_BIT) = '1' and control_in(ENABLE_BIT) = '1') then 
+                    accumulator_out <= accumulation_out; 
+                end if; 
+                
                 weight_out <= weight_forward_in;
                 activation_out <= activation_forward_in;
                 control_out <= control_in;
-                
-
-                if (control_in(PROCESS_ACCUMULATOR_BIT) = '1') then 
-                    accumulator_out <= accumulation_out; 
-                end if;
+               
             end if;
         end if; 
     end process;

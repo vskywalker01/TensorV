@@ -102,8 +102,9 @@ package body REDUCTORS is
         return  INTEGER is 
        
         -- These variables ae used to encode the height of the matrix in different phases
+        constant FULL_MATRIX_WIDTH:     INTEGER:= get_matrix_width(MATRIX_PARTIAL_SIZE,MATRIX_HEIGHT,MATRIX_STEP_LENGTH);
         constant ASCENDING_HEIGHT:      INTEGER:= (c+matrix_step_length)/matrix_step_length;
-        constant DESCENDING_HEIGHT:     INTEGER:= (MATRIX_WIDTH + matrix_step_length -c -1)/matrix_step_length;
+        constant DESCENDING_HEIGHT:     INTEGER:= (FULL_MATRIX_WIDTH + matrix_step_length -c -1)/matrix_step_length;
         constant CONSTANT_HEIGHT:       INTEGER:= matrix_rows_in;
         constant LAST_CARRY_POS:        INTEGER:= (matrix_step_length*(matrix_height-matrix_rows_in))+(matrix_partial_size);
     begin         

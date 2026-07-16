@@ -15,7 +15,7 @@ architecture Behavioral of adder_reductor_test is
     constant MATRIX_HEIGHT:          INTEGER := 8;
     constant MATRIX_PARTIAL_SIZE:    INTEGER := 9;
     constant MATRIX_STEP_LENGTH:     INTEGER := 1;
-    constant MATRIX_WIDTH:           INTEGER := get_matrix_width(MATRIX_PARTIAL_SIZE,MATRIX_HEIGHT);
+    constant MATRIX_WIDTH:           INTEGER := 4; --get_matrix_width(MATRIX_PARTIAL_SIZE,MATRIX_HEIGHT,MATRIX_STEP_LENGTH);
       
     signal input: MATRIX(MATRIX_HEIGHT-1 downto 0, MATRIX_WIDTH-1 downto 0);
     signal output: MATRIX(MATRIX_HEIGHT-1 downto 0,MATRIX_WIDTH-1 downto 0); 

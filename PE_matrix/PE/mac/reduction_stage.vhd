@@ -9,6 +9,7 @@ use IEEE.NUMERIC_STD.ALL;
 use work.REDUCTORS.ALL;
 use work.GENERATORS.ALL;
 
+
 entity reduction_stage is
     Generic (
         ACC_SIZE: INTEGER := 32
@@ -18,19 +19,32 @@ entity reduction_stage is
         data_b:                 in STD_LOGIC_VECTOR(7 downto 0);  
 
         matrix_out1:            out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0);
-        matrix_out2:            out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0); 
+        matrix_out2:            out STD_LOGIC_VECTOR(ACC_SIZE-1 downto 0)
 
     );
 end reduction_stage;
 
 architecture Behavioral of reduction_stage is     
+    function min( 
+        a:                  INTEGER;    
+        b:                  INTEGER
+    ) return                INTEGER is 
+    begin              
+        if (a<b) then 
+            return a; 
+        else 
+            return b; 
+        end if;
+    end function;
+
+
     constant DATA_SIZE: INTEGER := 8;
     
     -- Choosing Baugh-Wooley generator for the partials 
     constant MATRIX_PARTIAL_SIZE: INTEGER := get_bw_partial_size(DATA_SIZE);
     constant MATRIX_PARTIAL_SHIFT: INTEGER := get_bw_partial_shift;
     constant MATRIX_HEIGHT: INTEGER := get_bw_partials_to_reduce(DATA_SIZE);
-    constant MATRIX_WIDTH: INTEGER := get_matrix_width(MATRIX_PARTIAL_SIZE, MATRIX_HEIGHT, MATRIX_PARTIAL_SHIFT);
+    constant MATRIX_WIDTH: INTEGER := min(get_matrix_width(MATRIX_PARTIAL_SIZE, MATRIX_HEIGHT, MATRIX_PARTIAL_SHIFT),ACC_SIZE+1);
     
     signal partials: PARTIALS(MATRIX_HEIGHT-1 downto 0,MATRIX_PARTIAL_SIZE-1 downto 0);
     
@@ -53,13 +67,15 @@ begin
         );
     
     -- Performing routing from the PARTIAL type to the MATRIX type (applying shifting to the partials)
-    partials_routing: for p in 0 to 7 generate
-        col: for c in 0 to 8 generate 
+    partials_routing: for p in 0 to (MATRIX_HEIGHT-1) generate
+        col: for c in 0 to (MATRIX_PARTIAL_SIZE-1) generate 
             constant SHIFT: INTEGER := p*MATRIX_PARTIAL_SHIFT;  
             constant COL_POS: INTEGER := c + SHIFT;
             constant ROW_POS: INTEGER := p when (COL_POS<MATRIX_PARTIAL_SIZE) else (p-COL_POS+(MATRIX_PARTIAL_SIZE-1));
         begin 
-            matrix_r0(ROW_POS,COL_POS) <= partials(p,c);
+            routing: if (COL_POS<MATRIX_WIDTH) generate
+                matrix_r0(ROW_POS,COL_POS) <= partials(p,c);
+            end generate;
         end generate; 
     end generate;  
 
@@ -68,10 +84,10 @@ begin
         generic map(
             MATRIX_ROWS_IN => 8,
             MATRIX_ROWS_OUT => 6, 
-            MATRIX_HEIGHT => 8,
-            MATRIX_PARTIAL_SIZE => 9,
-            MATRIX_STEP_LENGTH => 1,
-            MATRIX_WIDTH => 16
+            MATRIX_HEIGHT => MATRIX_HEIGHT,
+            MATRIX_PARTIAL_SIZE => MATRIX_PARTIAL_SIZE,
+            MATRIX_STEP_LENGTH => MATRIX_PARTIAL_SHIFT,
+            MATRIX_WIDTH => MATRIX_WIDTH
         )
         port map (
             input => matrix_r0,
@@ -81,10 +97,10 @@ begin
         generic map(
             MATRIX_ROWS_IN => 6,
             MATRIX_ROWS_OUT => 4, 
-            MATRIX_HEIGHT => 8,
-            MATRIX_PARTIAL_SIZE => 9,
-            MATRIX_STEP_LENGTH => 1,
-            MATRIX_WIDTH => 16
+            MATRIX_HEIGHT => MATRIX_HEIGHT,
+            MATRIX_PARTIAL_SIZE => MATRIX_PARTIAL_SIZE,
+            MATRIX_STEP_LENGTH => MATRIX_PARTIAL_SHIFT,
+            MATRIX_WIDTH => MATRIX_WIDTH
         )
         port map (
             input => matrix_r1,
@@ -94,10 +110,10 @@ begin
         generic map(
             MATRIX_ROWS_IN => 4,
             MATRIX_ROWS_OUT => 3, 
-            MATRIX_HEIGHT => 8,
-            MATRIX_PARTIAL_SIZE => 9,
-            MATRIX_STEP_LENGTH => 1,
-            MATRIX_WIDTH => 16
+            MATRIX_HEIGHT => MATRIX_HEIGHT,
+            MATRIX_PARTIAL_SIZE => MATRIX_PARTIAL_SIZE,
+            MATRIX_STEP_LENGTH => MATRIX_PARTIAL_SHIFT,
+            MATRIX_WIDTH => MATRIX_WIDTH
         )
         port map (
             input => matrix_r2,
@@ -107,10 +123,10 @@ begin
         generic map(
             MATRIX_ROWS_IN => 3,
             MATRIX_ROWS_OUT => 2, 
-            MATRIX_HEIGHT => 8,
-            MATRIX_PARTIAL_SIZE => 9,
-            MATRIX_STEP_LENGTH => 1,
-            MATRIX_WIDTH => 16
+            MATRIX_HEIGHT => MATRIX_HEIGHT,
+            MATRIX_PARTIAL_SIZE => MATRIX_PARTIAL_SIZE,
+            MATRIX_STEP_LENGTH => MATRIX_PARTIAL_SHIFT,
+            MATRIX_WIDTH => MATRIX_WIDTH
         )
         port map (
             input => matrix_r3,
@@ -126,13 +142,15 @@ begin
     -- Because the sum between the two rows will result in the last bit inverted (BW generator), the last bits of the second row are inverted in order to avoid 
     -- an adjustment in the pipeline second stage
     
-    lower_bits: for c in 1 to 14 generate
+    lower_bits: for c in 1 to min(15,ACC_SIZE)-1 generate
         matrix_out1(c) <= matrix_r4(0,c);
         matrix_out2(c) <= matrix_r4(1,c);
     end generate; 
     
-    higher_bits: for c in 15 to (ACC_SIZE-1) generate
-        matrix_out1(c) <= matrix_r4(0,15);
-        matrix_out2(c) <= not(matrix_r4(1,15));
+    bit_extention: if (MATRIX_WIDTH>15) generate 
+        higher_bits: for c in 15 to (ACC_SIZE-1) generate
+            matrix_out1(c) <= matrix_r4(0,15);
+            matrix_out2(c) <= not(matrix_r4(1,15));
+        end generate;
     end generate;
 end architecture;

@@ -58,9 +58,9 @@ architecture Behavioral of adder_reductor is
         
         -- The following values are used to estimate the height of the matrix in different phases. 
         -- They are obtained using empirical observations of the matrix behavior between reductions from one layer to another
-
+        constant FULL_MATRIX_WIDTH: INTEGER := get_matrix_width(MATRIX_PARTIAL_SIZE,MATRIX_HEIGHT,MATRIX_STEP_LENGTH);
         constant ASCENDING_HEIGHT:  INTEGER := (c+MATRIX_STEP_LENGTH)/MATRIX_STEP_LENGTH; 
-        constant DESCENDING_HEIGHT: INTEGER := (MATRIX_WIDTH + MATRIX_STEP_LENGTH -c -1)/MATRIX_STEP_LENGTH;
+        constant DESCENDING_HEIGHT: INTEGER := (FULL_MATRIX_WIDTH + MATRIX_STEP_LENGTH -c -1)/MATRIX_STEP_LENGTH;
         constant LAST_CARRY_POS:    INTEGER := (MATRIX_STEP_LENGTH*(MATRIX_HEIGHT-matrix_rows_in))+(MATRIX_PARTIAL_SIZE);
         constant CONSTANT_HEIGHT:   INTEGER := matrix_rows_in;
     begin              
@@ -96,7 +96,6 @@ architecture Behavioral of adder_reductor is
         matrix_rows_in:     INTEGER;    -- input rows  
         matrix_rows_out:    INTEGER     -- target rows 
     ) return                INTEGER is
-
         constant PREVIOUS_CARRYS: INTEGER := get_generated_carrys(c-1,matrix_rows_in,matrix_rows_out);
         constant HEIGHT:          INTEGER := get_adder_matrix_height(c,matrix_rows_in,MATRIX_WIDTH,MATRIX_HEIGHT,MATRIX_PARTIAL_SIZE,MATRIX_STEP_LENGTH);
        
@@ -116,7 +115,6 @@ architecture Behavioral of adder_reductor is
         matrix_rows_in:     INTEGER;    -- input rows
         matrix_rows_out:    INTEGER     -- target rows 
     ) return                INTEGER is 
-    
         constant PREVIOUS_CARRYS: INTEGER := get_generated_carrys(c-1,matrix_rows_in,matrix_rows_out);
         constant HEIGHT:          INTEGER := get_adder_matrix_height(c,matrix_rows_in,MATRIX_WIDTH,MATRIX_HEIGHT,MATRIX_PARTIAL_SIZE,MATRIX_STEP_LENGTH);
        
@@ -133,6 +131,8 @@ architecture Behavioral of adder_reductor is
 
 begin
     routing_cols: for c in 0 to (MATRIX_WIDTH-1) generate          
+        constant FULL_MATRIX_WIDTH: INTEGER := get_matrix_width(MATRIX_PARTIAL_SIZE,MATRIX_HEIGHT,MATRIX_STEP_LENGTH);
+        
         -- Carrys generated from the previous column to consider 
         constant PREVIOUS_CARRYS: integer := get_generated_carrys(c-1,MATRIX_ROWS_IN,MATRIX_ROWS_OUT);
 

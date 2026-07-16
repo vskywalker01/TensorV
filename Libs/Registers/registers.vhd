@@ -26,7 +26,9 @@ package REGISTERS is
             
             -- Data lines
             data_in:         in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);           -- input port
-            data_out:        out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0)           -- output port
+            data_out:        out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);          -- output port
+            
+            empty_out:           out STD_LOGIC
         );
     end component;
     
