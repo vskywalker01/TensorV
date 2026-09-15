@@ -4,7 +4,7 @@ use ieee.math_real.all;
 
 package PE_MATRIX_PARAMETERS is 
     constant DEPTH: INTEGER := 8; 
-    constant PROCESSING_ELEMENTS: INTEGER := DEPTH**2;
+    constant PROCESSING_ELEMENTS: INTEGER := (DEPTH**2)/2;
     constant QUEUE_SIZE: INTEGER := 8;
     constant DATA_SIZE: INTEGER := 8;
     constant ACCUMULATOR_SIZE: INTEGER := (DATA_SIZE*2)+INTEGER(ceil(log2(REAL(DEPTH))));
@@ -22,8 +22,8 @@ package PE_MATRIX_PARAMETERS is
     type MATRIX_INTERCONNECT_ACCUMULATOR is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
     type MATRIX_INTERCONNECT_CONTROL is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);
     
-    type MATRIX_ROWS_INTERFACE is array ((DEPTH*2)-2 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
-    type MATRIX_ROWS_CONTROL_INTERFACE is array ((DEPTH*2)-2 downto 0) of STD_LOGIC; 
+    type MATRIX_ROWS_INTERFACE is array (DEPTH-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
+    type MATRIX_ROWS_CONTROL_INTERFACE is array (DEPTH-1 downto 0) of STD_LOGIC; 
     type MATRIX_WEIGHTS_INTERFACE is array (DEPTH-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
     type MATRIX_WEIGHTS_CONTROL_INTERFACE is array (DEPTH-1 downto 0) of STD_LOGIC; 
     type MATRIX_ACCUMULATORS_INTERFACE is array (DEPTH-1 downto 0) of STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);

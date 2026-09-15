@@ -112,123 +112,99 @@ begin
     begin 
         reset <= '1'; 
         wait until falling_edge(clk);
-        
-        reset <= '0'; 
-        
         wait until falling_edge(clk);
+        reset <= '0'; 
         
         for i in 0 to DEPTH-1 loop 
             weights_in(i) <= (others => '0');
+            rows_in(i) <= (others => '0');
             accumulators_in(i) <= STD_LOGIC_VECTOR(TO_UNSIGNED(accumulators,ACCUMULATOR_SIZE));
+            
             accumulators_init_in(i) <= '1'; 
             weights_init_in(i) <= '1';
+            rows_init_in(i) <= '1';
             accumulators_valid_in(i) <= '0';
             weights_valid_in(i) <= '0';
-            enables_in(i) <= '0';
-        end loop; 
-        
-        for i in 0 to (DEPTH*2)-2 loop 
-            rows_in(i) <= (others => '0');
-            rows_init_in(i) <= '1';
             rows_valid_in(i) <= '0';
+            enables_in(i) <= '0';
         end loop; 
         
         wait until falling_edge(clk); 
 
         for i in 0 to (TEST_WEIGHT_SIZE-1) loop 
-            for e in 0 to DEPTH-1 loop 
+            for e in 0 to TEST_WEIGHT_SIZE-1 loop 
                 weights_in(e) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_WEIGHT(e mod TEST_WEIGHT_SIZE,i),DATA_SIZE));
+                rows_in(e) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(e,i),DATA_SIZE));
                 accumulators_init_in(e) <= '0'; 
                 weights_init_in(e) <= '0';
+                rows_init_in(e) <= '0';
                 accumulators_valid_in(e) <= '0';
                 weights_valid_in(e) <= '1';
+                rows_valid_in(e) <= '1';
                 enables_in(e) <= '0';
             end loop; 
-
-            for e in 0 to (TEST_MATRIX_SIZE-1) loop 
-                rows_in(e) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(e,i),DATA_SIZE));
-                rows_init_in(e) <= '0';
-                rows_valid_in(e) <= '1';
-            end loop;
             wait until falling_edge(clk);   
         end loop; 
         
 
         
         for r in 0 to TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE loop 
-            if (r<TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE) then 
-                for e in 0 to DEPTH-1 loop 
-                    accumulators_init_in(e) <= '0'; 
-                    weights_init_in(e) <= '0';
-                    accumulators_valid_in(e) <= '0';
-                    weights_valid_in(e) <= '0';
-                    enables_in(e) <= '1';
-                end loop; 
-                
-                for e in 0 to (TEST_MATRIX_SIZE-1) loop 
-                    rows_in(r) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(e,TEST_WEIGHT_SIZE+r),DATA_SIZE));
-                    rows_init_in(e) <= '0';
+            for e in 0 to TEST_WEIGHT_SIZE-1 loop 
+                if (r<TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE) then
+                    rows_in(e) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(e,TEST_WEIGHT_SIZE+r),DATA_SIZE));
                     rows_valid_in(e) <= '1';
-                end loop;
-            else 
-                for e in 0 to DEPTH-1 loop 
-                    accumulators_init_in(e) <= '0'; 
-                    weights_init_in(e) <= '0';
-                    accumulators_valid_in(e) <= '0';
-                    weights_valid_in(e) <= '0';
-                    enables_in(e) <= '1';
-                end loop; 
-                for e in 0 to (TEST_MATRIX_SIZE-1) loop 
-                    rows_init_in(e) <= '0';
+                else 
                     rows_valid_in(e) <= '0';
-                end loop;
-            end if;
+                end if;
+                accumulators_init_in(e) <= '0'; 
+                weights_init_in(e) <= '0';
+                rows_init_in(e) <= '0';
+                accumulators_valid_in(e) <= '0';
+                weights_valid_in(e) <= '0';
+                
+                enables_in(e) <= '1';
+            end loop; 
             
             wait until falling_edge(clk);
             
-            for e in 0 to DEPTH-1 loop 
+            for e in 0 to TEST_WEIGHT_SIZE-1 loop 
                 accumulators_init_in(e) <= '0'; 
                 weights_init_in(e) <= '0';
+                rows_init_in(e) <= '0';
                 accumulators_valid_in(e) <= '0';
                 weights_valid_in(e) <= '0';
+                rows_valid_in(e) <= '0';
                 enables_in(e) <= '1';
             end loop; 
-            for e in 0 to (TEST_MATRIX_SIZE-1) loop 
-                rows_init_in(e) <= '0';
-                rows_valid_in(e) <= '0';
-            end loop;
             
             for i in 0 to TEST_WEIGHT_SIZE-2 loop
                 wait until falling_edge(clk);
             end loop;
             
-            for e in 0 to DEPTH-1 loop 
-                accumulators_init_in(e) <= '1'; 
+            for e in 0 to TEST_WEIGHT_SIZE-1 loop 
                 weights_init_in(e) <= '0';
-                accumulators_valid_in(e) <= '1';
-                weights_valid_in(e) <= '0';
-                enables_in(e) <= '1';
-            end loop; 
-            for e in 0 to (TEST_MATRIX_SIZE-1) loop 
                 rows_init_in(e) <= '0';
+                weights_valid_in(e) <= '0';
                 rows_valid_in(e) <= '0';
-            end loop;
+                enables_in(e) <= '1';
+                accumulators_init_in(e) <= '1'; 
+                accumulators_valid_in(e) <= '1';
+
+            end loop; 
            
             wait until falling_edge(clk);
             
         end loop;
         
-        for e in 0 to DEPTH-1 loop 
+        for e in 0 to TEST_WEIGHT_SIZE-1 loop 
             accumulators_init_in(e) <= '0'; 
             weights_init_in(e) <= '0';
+            rows_init_in(e) <= '0';
             accumulators_valid_in(e) <= '0';
             weights_valid_in(e) <= '0';
+            rows_valid_in(e) <= '0';
             enables_in(e) <= '0';
         end loop; 
-        for e in 0 to (TEST_MATRIX_SIZE-1) loop 
-            rows_init_in(e) <= '0';
-            rows_valid_in(e) <= '0';
-        end loop;
         
         wait;
            

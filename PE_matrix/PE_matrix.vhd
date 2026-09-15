@@ -38,8 +38,8 @@ begin
 
     matrix_rows: for r in 0 to (DEPTH-1) generate 
         matrix_columns: for c in 0 to (DEPTH-1) generate
-        begin  
-            processing_element: PE 
+            processing_element: if (c<DEPTH-r-1) generate 
+                pe_entity: PE 
                 Port map (
                     clk => clk, 
                     reset => reset,       
@@ -56,9 +56,19 @@ begin
                     accumulator_in => accumulator_interconnect_ports_in(r,c),
                     accumulator_out => accumulator_interconnect_ports_out(r,c)
                 );
-                
+            end generate;
+            
+            bridge: if (c>=DEPTH-r-1) generate 
+                    control_interconnect_ports_out(r,c) <= control_interconnect_ports_in(r,c);
+                    weight_interconnect_ports_out(r,c) <= weight_interconnect_ports_in(r,c);
+                    row_interconnect_ports_out(r,c) <= row_interconnect_ports_in(r,c);
+                    accumulator_interconnect_ports_out(r,c) <= accumulator_interconnect_ports_in(r,c);
+            end generate;
+            
+            
             weight_routing: if (c+1<DEPTH) generate 
                 weight_interconnect_ports_in(r,c+1) <= weight_interconnect_ports_out(r,c);
+
                 control_interconnect_ports_in(r,c+1)(WEIGHT_INIT_BIT) <= control_interconnect_ports_out(r,c)(WEIGHT_INIT_BIT);
                 control_interconnect_ports_in(r,c+1)(WEIGHT_VALID_BIT) <= control_interconnect_ports_out(r,c)(WEIGHT_VALID_BIT);
             end generate; 
@@ -67,19 +77,25 @@ begin
                 accumulator_interconnect_ports_in(r+1,c) <= accumulator_interconnect_ports_out(r,c);
                 control_interconnect_ports_in(r+1,c)(ACCUMULATOR_VALID_BIT) <= control_interconnect_ports_out(r,c)(ACCUMULATOR_VALID_BIT);
                 control_interconnect_ports_in(r+1,c)(ENABLE_BIT) <= control_interconnect_ports_out(r,c)(ENABLE_BIT);
+                control_interconnect_ports_in(r+1,c)(ACCUMULATOR_INIT_BIT) <= control_interconnect_ports_out(r,c)(ACCUMULATOR_INIT_BIT);
             end generate; 
             
-            rows_routing: if (r>0 and c+1<DEPTH) generate 
-                row_interconnect_ports_in(r-1,c+1) <= row_interconnect_ports_out(r,c);
-                control_interconnect_ports_in(r-1,c+1)(ACTIVATION_INIT_BIT) <= control_interconnect_ports_out(r,c)(ACTIVATION_INIT_BIT);
-                control_interconnect_ports_in(r-1,c+1)(ACTIVATION_VALID_BIT) <= control_interconnect_ports_out(r,c)(ACTIVATION_VALID_BIT);
+--            rows_routing: if (r>0 and (c+1<DEPTH)) generate 
+--                row_interconnect_ports_in(r-1,c+1) <= row_interconnect_ports_out(r,c);
+--                control_interconnect_ports_in(r-1,c+1)(ACTIVATION_INIT_BIT) <= control_interconnect_ports_out(r,c)(ACTIVATION_INIT_BIT);
+--                control_interconnect_ports_in(r-1,c+1)(ACTIVATION_VALID_BIT) <= control_interconnect_ports_out(r,c)(ACTIVATION_VALID_BIT);
+--            end generate; 
+            rows_routing: if (r<DEPTH-1) and (c>0) generate 
+                row_interconnect_ports_in(r+1,c-1) <= row_interconnect_ports_out(r,c);
+                control_interconnect_ports_in(r+1,c-1)(ACTIVATION_INIT_BIT) <= control_interconnect_ports_out(r,c)(ACTIVATION_INIT_BIT);
+                control_interconnect_ports_in(r+1,c-1)(ACTIVATION_VALID_BIT) <= control_interconnect_ports_out(r,c)(ACTIVATION_VALID_BIT);
             end generate; 
-            
-        end generate; 
+        end generate;
     end generate;
     
     accumulators_routing: for i in 0 to (DEPTH-1) generate 
         accumulators_out(i) <= accumulator_interconnect_ports_out(DEPTH-1,i);
+        accumulators_valid_out(i) <= control_interconnect_ports_out(DEPTH-1,i)(ACCUMULATOR_VALID_BIT);
         accumulator_interconnect_ports_in(0,i) <= accumulators_in(i); 
         control_interconnect_ports_in(0,i)(ACCUMULATOR_INIT_BIT) <= accumulators_init_in(i);
         control_interconnect_ports_in(0,i)(ACCUMULATOR_VALID_BIT) <= accumulators_valid_in(i);
@@ -92,13 +108,10 @@ begin
         control_interconnect_ports_in(i,0)(WEIGHT_VALID_BIT) <= weights_valid_in(i);
     end generate; 
     
-    rows_routing: for i in 0 to (DEPTH*2)-2 generate 
-        constant C: INTEGER := 0 when (i<DEPTH) else (i-DEPTH+1);
-        constant R: INTEGER := i when (i<DEPTH) else (DEPTH-1);
-    begin 
-        row_interconnect_ports_in(R,C) <= rows_in(i); 
-        control_interconnect_ports_in(R,C)(ACTIVATION_INIT_BIT) <= rows_init_in(i);
-        control_interconnect_ports_in(R,C)(ACTIVATION_VALID_BIT) <= rows_valid_in(i);
+    rows_routing: for i in 0 to (DEPTH-1) generate 
+        row_interconnect_ports_in(0,i) <= rows_in(i); 
+        control_interconnect_ports_in(0,i)(ACTIVATION_INIT_BIT) <= rows_init_in(i);
+        control_interconnect_ports_in(0,i)(ACTIVATION_VALID_BIT) <= rows_valid_in(i);
     end generate; 
     
 end architecture;
