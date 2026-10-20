@@ -8,7 +8,8 @@ use IEEE.math_real.ALL;
 entity circular_queue is 
     Generic (
         DATA_SIZE:      INTEGER := 8;
-        REGISTERS:      INTEGER := 8
+        REGISTERS:      INTEGER := 8;
+        COUNTER_SIZE:   INTEGER := 3
     );
     Port (
         -- Control lines 
@@ -31,7 +32,6 @@ entity circular_queue is
 end  circular_queue;
 
 architecture Behavioral of  circular_queue is
-    constant COUNTER_SIZE: INTEGER := INTEGER(ceil(log2(REAL(REGISTERS))));
 
     type REGISTER_ARRAY         is array (REGISTERS-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
     
@@ -60,14 +60,14 @@ begin
                     register_file(to_integer(tail)) <= data_in;
                     tail <= (tail + 1); -- mod REGISTER;;  
                 end if; 
-                if (add = '1' and shift = '1' and not(tail = (head) mod REGISTERS)) then 
+                if (add = '1' and shift = '1' and not(tail = head)) then 
                     register_file(to_integer(tail)) <= data_in;
                     tail <= (tail + 1); -- mod REGISTERS; 
                     data_out <= register_file(to_integer(head));
                     head <= (head + 1); -- mod REGISTERS; 
                 end if; 
                 
-                if (add = '0' and shift = '1' and not(tail = (head) mod REGISTERS)) then 
+                if (add = '0' and shift = '1' and not(tail = head)) then 
                     register_file(to_integer(tail)) <= register_file(to_integer(head));
                     tail <= (tail + 1); -- mod REGISTERS; 
                     data_out <= register_file(to_integer(head));

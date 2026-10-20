@@ -67,60 +67,85 @@ begin
         constant TEST_VECTOR: SAMPLE_ARRAY := (-50,20,-30,90,-40,60,-10,80,-70);
         constant TEST_WEIGHT: SAMPLE_ARRAY := (2,-5,3);
         constant TEST_RESULTS: SAMPLE_ARRAY := (-290,460,-630,560,-410,410,630);
-        constant TEST_VECTOR_SIZE: INTEGER := 9;
+        
+        constant TEST_VECTOR_SIZE: INTEGER := 5;
         constant TEST_WEIGHT_SIZE: INTEGER := 3;
 
         constant ACCUMULATOR: INTEGER := 0;
-        constant error_counter: INTEGER := 0;
+
     begin 
         reset <= '1'; 
         wait until falling_edge(clk);
         
         reset <= '0'; 
         
+        -- initialization phase
+        
         wait until falling_edge(clk);
         weight_in <= (others => '0');
         activation_in <= (others => '0');
         accumulator_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(accumulator,ACCUMULATOR_SIZE));
         
-        control_in <= "1110000";
+        -- we set the PE so that it will process rows with size TEST_WEIGHT_SIZE and with a stride number equal to 1 (standard convolution)
+        control_in(ACTIVATION_SIZE_MS_BIT downto ACTIVATION_SIZE_LS_BIT) <= STD_LOGIC_VECTOR(to_unsigned(TEST_WEIGHT_SIZE,QUEUE_COUNTERS_SIZE));
+        control_in(ACTIVATION_SKIP_MS_BIT downto ACTIVATION_SKIP_LS_BIT) <= STD_LOGIC_VECTOR(to_unsigned(1,QUEUE_COUNTERS_SIZE));
+        
+        -- queue initialization
+        control_in(ACTIVATION_INIT_BIT) <= '1';
+        control_in(WEIGHT_INIT_BIT) <= '1';
+        control_in(ACCUMULATOR_INIT_BIT) <= '1';
+        control_in(WEIGHT_VALID_BIT) <= '0';
+        control_in(ACTIVATION_VALID_BIT) <= '0';
+        control_in(ENABLE_BIT) <= '0';
+        control_in(PROCESS_TYPE_BIT) <= '0';
         
         wait until falling_edge(clk); 
         
-        control_in <= "0001100";
+        -- Loading phase
+        control_in(ACTIVATION_INIT_BIT) <= '0';
+        control_in(WEIGHT_INIT_BIT) <= '0';
+        control_in(ACCUMULATOR_INIT_BIT) <= '0';
+        control_in(ACTIVATION_VALID_BIT) <= '1';
+        control_in(ENABLE_BIT) <= '0';
+        control_in(PROCESS_TYPE_BIT) <= '0';
         
-        for i in 0 to TEST_WEIGHT_SIZE-1 loop
-                weight_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_WEIGHT(i),DATA_SIZE));
+        for i in 0 to TEST_VECTOR_SIZE-1 loop
+        
+                -- The weights are loaded in the weight queue
+                if (i<TEST_WEIGHT_SIZE) then 
+                    weight_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_WEIGHT(i),DATA_SIZE));
+                    control_in(WEIGHT_VALID_BIT) <= '1';
+                else 
+                    control_in(WEIGHT_VALID_BIT) <= '0';
+                end if; 
+                
+                -- The entire row is loaded in the activation queue
                 activation_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_VECTOR(i),DATA_SIZE));
                 
                 wait until falling_edge(clk);   
         end loop; 
         
+        -- Execution phase
         
-        for r in 0 to TEST_VECTOR_SIZE-TEST_WEIGHT_SIZE loop 
-            if (r<TEST_VECTOR_SIZE-TEST_WEIGHT_SIZE) then 
-                control_in <= "0001001";
-                activation_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_VECTOR(TEST_WEIGHT_SIZE+r),DATA_SIZE));
-            else 
-                control_in <= "0000001";
-            end if;
-            
-            wait until falling_edge(clk);
-            
-            control_in <= "0000001";
-            
-            for i in 0 to TEST_WEIGHT_SIZE-2 loop
-                wait until falling_edge(clk);
-            end loop;
-            
-            control_in <= "0010011";
-            accumulator_in <= STD_LOGIC_VECTOR(TO_SIGNED(accumulator,ACCUMULATOR_SIZE));
-
-            wait until falling_edge(clk);
-            
+        control_in(ACTIVATION_INIT_BIT) <= '0';
+        control_in(WEIGHT_INIT_BIT) <= '0';
+        control_in(ACCUMULATOR_INIT_BIT) <= '0';
+        control_in(ACTIVATION_VALID_BIT) <= '0';
+        control_in(ENABLE_BIT) <= '1';
+        control_in(PROCESS_TYPE_BIT) <= '0';
+        
+        for i in 0 to (TEST_WEIGHT_SIZE*6) loop 
+            wait until falling_edge(clk);  
         end loop;
         
-        control_in <= "0000000";
+        -- unloading phase + second loading phase
+        control_in(ACTIVATION_INIT_BIT) <= '0';
+        control_in(WEIGHT_INIT_BIT) <= '0';
+        control_in(ACCUMULATOR_INIT_BIT) <= '0';
+        control_in(ACTIVATION_VALID_BIT) <= '0';
+        control_in(ENABLE_BIT) <= '1';
+        control_in(PROCESS_TYPE_BIT) <= '1';
+           
         
         wait;
            
