@@ -8,31 +8,23 @@ entity PE_matrix is
         reset:                  in STD_LOGIC;                 
         
         weights_in:                 in MATRIX_WEIGHTS_INTERFACE; 
-        rows_in:                    in MATRIX_ROWS_INTERFACE; 
+        activations_in:             in MATRIX_ACTIVATION_INTERFACE; 
         accumulators_in:            in MATRIX_ACCUMULATORS_INTERFACE; 
+        controls_in:                in MATRIX_CONTROL_INTERFACE;
+        status_in:                  in MATRIX_STATUS_INTERFACE;
+        
         accumulators_out:           out MATRIX_ACCUMULATORS_INTERFACE;
-        
-        weights_init_in:            in MATRIX_WEIGHTS_CONTROL_INTERFACE;
-        weights_valid_in:           in MATRIX_WEIGHTS_CONTROL_INTERFACE; 
-        
-        rows_init_in:               in MATRIX_ROWS_CONTROL_INTERFACE; 
-        rows_valid_in:              in MATRIX_ROWS_CONTROL_INTERFACE; 
-        
-        accumulators_init_in:       in MATRIX_ACCUMULATORS_CONTROL_INTERFACE; 
-        accumulators_valid_in:      in MATRIX_ACCUMULATORS_CONTROL_INTERFACE; 
-        accumulators_valid_out:     out MATRIX_ACCUMULATORS_CONTROL_INTERFACE; 
-        
-        enables_in:                 in MATRIX_ACCUMULATORS_CONTROL_INTERFACE
-
+        status_out:                 out MATRIX_STATUS_INTERFACE
     );
 end PE_matrix;
 
 
 architecture Behavioral of PE_matrix is 
     signal weight_interconnect_ports_in,weight_interconnect_ports_out: MATRIX_INTERCONNECT_DATA; 
-    signal row_interconnect_ports_in,row_interconnect_ports_out: MATRIX_INTERCONNECT_DATA; 
+    signal activation_interconnect_ports_in,activation_interconnect_ports_out: MATRIX_INTERCONNECT_DATA; 
     signal accumulator_interconnect_ports_in,accumulator_interconnect_ports_out: MATRIX_INTERCONNECT_ACCUMULATOR;
     signal control_interconnect_ports_in,control_interconnect_ports_out: MATRIX_INTERCONNECT_CONTROL; 
+    signal status_interconnect_ports_in, status_interconnect_ports_out: MATRIX_INTERCONNECT_STATUS;
     
 begin 
 
@@ -44,13 +36,14 @@ begin
                     reset => reset,       
                     control_in => control_interconnect_ports_in(r,c),
                     control_out => control_interconnect_ports_out(r,c),
-                    
+                    status_in => status_interconnect_ports_in(r,c),
+                    status_out => status_interconnect_ports_out(r,c),
                     
                     weight_in => weight_interconnect_ports_in(r,c), 
                     weight_out => weight_interconnect_ports_out(r,c), 
                     
-                    activation_in => row_interconnect_ports_in(r,c),
-                    activation_out => row_interconnect_ports_out(r,c),
+                    activation_in => activation_interconnect_ports_in(r,c),
+                    activation_out => activation_interconnect_ports_out(r,c),
                     
                     accumulator_in => accumulator_interconnect_ports_in(r,c),
                     accumulator_out => accumulator_interconnect_ports_out(r,c)
@@ -59,73 +52,46 @@ begin
             
             weight_routing: if (c+1<DEPTH) generate 
                 weight_interconnect_ports_in(r,c+1) <= weight_interconnect_ports_out(r,c);
---                control_interconnect_ports_in(r,c+1)(WEIGHT_INIT_BIT) <= control_interconnect_ports_out(r,c)(WEIGHT_INIT_BIT);
---                control_interconnect_ports_in(r,c+1)(WEIGHT_VALID_BIT) <= control_interconnect_ports_out(r,c)(WEIGHT_VALID_BIT);
             end generate; 
             
             accumulators_routing: if (r+1<DEPTH) generate 
                 accumulator_interconnect_ports_in(r+1,c) <= accumulator_interconnect_ports_out(r,c);
-                control_interconnect_ports_in(r+1,c)(ACCUMULATOR_VALID_BIT) <= control_interconnect_ports_out(r,c)(ACCUMULATOR_VALID_BIT);
---                control_interconnect_ports_in(r+1,c)(ENABLE_BIT) <= control_interconnect_ports_out(r,c)(ENABLE_BIT);
---                control_interconnect_ports_in(r+1,c)(ACCUMULATOR_INIT_BIT) <= control_interconnect_ports_out(r,c)(ACCUMULATOR_INIT_BIT);
+                status_interconnect_ports_in(r+1,c)<= status_interconnect_ports_out(r,c);
             end generate; 
             
-            rows_routing: if (r>0 and (c+1<DEPTH)) generate 
-                row_interconnect_ports_in(r-1,c+1) <= row_interconnect_ports_out(r,c);
---                control_interconnect_ports_in(r-1,c+1)(ACTIVATION_INIT_BIT) <= control_interconnect_ports_out(r,c)(ACTIVATION_INIT_BIT);
---                control_interconnect_ports_in(r-1,c+1)(ACTIVATION_VALID_BIT) <= control_interconnect_ports_out(r,c)(ACTIVATION_VALID_BIT);
+            activation_routing: if (r>0 and (c+1<DEPTH)) generate 
+                activation_interconnect_ports_in(r-1,c+1) <= activation_interconnect_ports_out(r,c);
             end generate; 
             
-            control_routing: if (r>0 and (c+1<DEPTH)) generate 
-                --control_interconnect_ports_in(r-1,c+1) <= control_interconnect_ports_out(r,c);
-                control_interconnect_ports_in(r-1,c+1)(WEIGHT_INIT_BIT) <= control_interconnect_ports_out(r,c)(WEIGHT_INIT_BIT);
-                control_interconnect_ports_in(r-1,c+1)(WEIGHT_VALID_BIT) <= control_interconnect_ports_out(r,c)(WEIGHT_VALID_BIT);
-                control_interconnect_ports_in(r-1,c+1)(ENABLE_BIT) <= control_interconnect_ports_out(r,c)(ENABLE_BIT);
-                control_interconnect_ports_in(r-1,c+1)(ACCUMULATOR_INIT_BIT) <= control_interconnect_ports_out(r,c)(ACCUMULATOR_INIT_BIT); 
-                control_interconnect_ports_in(r-1,c+1)(ACTIVATION_INIT_BIT) <= control_interconnect_ports_out(r,c)(ACTIVATION_INIT_BIT);
-                control_interconnect_ports_in(r-1,c+1)(ACTIVATION_VALID_BIT) <= control_interconnect_ports_out(r,c)(ACTIVATION_VALID_BIT);
+            control_routing: if (c+1<DEPTH) generate 
+                control_interconnect_ports_in(r,c+1) <= control_interconnect_ports_out(r,c);
             end generate; 
+            
+            
+             
         end generate;
     end generate;
     
-    accumulators_routing: for i in 0 to (ACCUMULATION_LINES-1) generate 
+    accumulator_interfaces_routing: for i in 0 to (ACCUMULATION_LINES-1) generate 
         accumulators_out(i) <= accumulator_interconnect_ports_out(DEPTH-1,i);
         accumulator_interconnect_ports_in(0,i) <= accumulators_in(i); 
-        accumulators_valid_out(i) <= control_interconnect_ports_out(DEPTH-1,i)(ACCUMULATOR_VALID_BIT);
---        control_interconnect_ports_in(0,i)(ACCUMULATOR_INIT_BIT) <= accumulators_init_in(i);
-        control_interconnect_ports_in(0,i)(ACCUMULATOR_VALID_BIT) <= accumulators_valid_in(i);
---        control_interconnect_ports_in(0,i)(ENABLE_BIT) <= enables_in(i);
+        status_out(i) <= status_interconnect_ports_out(DEPTH-1,i);
+        status_interconnect_ports_in(0,i) <= status_in(i);
     end generate; 
     
-    weights_routing: for i in 0 to (WEIGHT_LINES-1) generate 
+    weight_interface_routing: for i in 0 to (WEIGHT_LINES-1) generate 
         weight_interconnect_ports_in(i,0) <= weights_in(i);
---        control_interconnect_ports_in(i,0)(WEIGHT_INIT_BIT) <= weights_init_in(i);
---        control_interconnect_ports_in(i,0)(WEIGHT_VALID_BIT) <= weights_valid_in(i);
     end generate; 
     
-    rows_routing: for i in 0 to (ACTIVATION_LINES-1) generate 
+    activation_interface_routing: for i in 0 to (ACTIVATION_LINES-1) generate 
         constant ROW: INTEGER := i when (i<DEPTH) else (DEPTH-1); 
         constant COL: INTEGER := 0 when (i<DEPTH) else (i-DEPTH+1);
     begin 
-        row_interconnect_ports_in(ROW,COL) <= rows_in(i); 
---        control_interconnect_ports_in(ROW,COL)(ACTIVATION_INIT_BIT) <= rows_init_in(i);
---        control_interconnect_ports_in(ROW,COL)(ACTIVATION_VALID_BIT) <= rows_valid_in(i);
+        activation_interconnect_ports_in(ROW,COL) <= activations_in(i); 
     end generate; 
     
-    control_routing: for i in 0 to (ACTIVATION_LINES-1) generate 
-        constant ROW: INTEGER := i when (i<DEPTH) else (DEPTH-1); 
-        constant COL: INTEGER := 0 when (i<DEPTH) else (i-DEPTH+1);
-    begin 
-        
-        control_interconnect_ports_in(ROW,COL)(ACTIVATION_INIT_BIT) <= rows_init_in(i);
-        control_interconnect_ports_in(ROW,COL)(ACTIVATION_VALID_BIT) <= rows_valid_in(i);
-        control_interconnect_ports_in(ROW,COL)(WEIGHT_INIT_BIT) <= weights_init_in(i);
-        control_interconnect_ports_in(ROW,COL)(WEIGHT_VALID_BIT) <= weights_valid_in(i);
-        control_interconnect_ports_in(ROW,COL)(ACCUMULATOR_INIT_BIT) <= accumulators_init_in(i);
-        --control_interconnect_ports_in(ROW,COL)(ACCUMULATOR_VALID_BIT) <= accumulators_valid_in(i);
-        control_interconnect_ports_in(ROW,COL)(ENABLE_BIT) <= enables_in(i);
-             
-
+    control_interface_routing: for i in 0 to (CONTROL_LINES-1) generate 
+        control_interconnect_ports_in(i,0) <= controls_in(i);             
     end generate; 
     
 end architecture;

@@ -14,42 +14,23 @@ architecture Behavioral of PE_matrix_test is
             reset:                  in STD_LOGIC;                 
             
             weights_in:                 in MATRIX_WEIGHTS_INTERFACE; 
-            rows_in:                    in MATRIX_ROWS_INTERFACE; 
+            activations_in:             in MATRIX_ACTIVATION_INTERFACE; 
             accumulators_in:            in MATRIX_ACCUMULATORS_INTERFACE; 
+            controls_in:                in MATRIX_CONTROL_INTERFACE;
+            status_in:                  in MATRIX_STATUS_INTERFACE;
+            
             accumulators_out:           out MATRIX_ACCUMULATORS_INTERFACE;
-            
-            weights_init_in:            in MATRIX_WEIGHTS_CONTROL_INTERFACE;
-            weights_valid_in:           in MATRIX_WEIGHTS_CONTROL_INTERFACE; 
-            
-            rows_init_in:               in MATRIX_ROWS_CONTROL_INTERFACE; 
-            rows_valid_in:              in MATRIX_ROWS_CONTROL_INTERFACE; 
-            
-            accumulators_init_in:       in MATRIX_ACCUMULATORS_CONTROL_INTERFACE; 
-            accumulators_valid_in:      in MATRIX_ACCUMULATORS_CONTROL_INTERFACE; 
-            accumulators_valid_out:     out MATRIX_ACCUMULATORS_CONTROL_INTERFACE; 
-            
-            enables_in:                 in MATRIX_ACCUMULATORS_CONTROL_INTERFACE
-    
+            status_out:                 out MATRIX_STATUS_INTERFACE
         );
     end component;
     
     signal clk, reset: STD_LOGIC;
-    signal weights_in:                 MATRIX_WEIGHTS_INTERFACE; 
-    signal rows_in:                    MATRIX_ROWS_INTERFACE; 
-    signal accumulators_in:            MATRIX_ACCUMULATORS_INTERFACE; 
-    signal accumulators_out:           MATRIX_ACCUMULATORS_INTERFACE;
+    signal weights_in:                          MATRIX_WEIGHTS_INTERFACE; 
+    signal activations_in:                      MATRIX_ACTIVATION_INTERFACE; 
+    signal accumulators_in, accumulators_out:   MATRIX_ACCUMULATORS_INTERFACE; 
             
-    signal weights_init_in:            MATRIX_WEIGHTS_CONTROL_INTERFACE;
-    signal weights_valid_in:           MATRIX_WEIGHTS_CONTROL_INTERFACE; 
-            
-    signal rows_init_in:               MATRIX_ROWS_CONTROL_INTERFACE; 
-    signal rows_valid_in:              MATRIX_ROWS_CONTROL_INTERFACE; 
-            
-    signal accumulators_init_in:       MATRIX_ACCUMULATORS_CONTROL_INTERFACE; 
-    signal accumulators_valid_in:      MATRIX_ACCUMULATORS_CONTROL_INTERFACE; 
-    signal accumulators_valid_out:     MATRIX_ACCUMULATORS_CONTROL_INTERFACE; 
-            
-    signal enables_in:                 MATRIX_ACCUMULATORS_CONTROL_INTERFACE;
+    signal controls_in:                         MATRIX_CONTROL_INTERFACE;
+    signal status_in, status_out:               MATRIX_STATUS_INTERFACE;
     
 begin
     
@@ -59,21 +40,13 @@ begin
             reset => reset,               
             
             weights_in => weights_in,
-            rows_in => rows_in,
+            activations_in => activations_in,
             accumulators_in => accumulators_in,
             accumulators_out => accumulators_out,
             
-            weights_init_in => weights_init_in,
-            weights_valid_in => weights_valid_in, 
-            
-            rows_init_in => rows_init_in, 
-            rows_valid_in => rows_valid_in, 
-            
-            accumulators_init_in => accumulators_init_in, 
-            accumulators_valid_in => accumulators_valid_in, 
-            accumulators_valid_out => accumulators_valid_out, 
-            
-            enables_in => enables_in 
+            controls_in => controls_in,
+            status_in => status_in,
+            status_out => status_out
         );
 
     clock: process 
@@ -108,6 +81,7 @@ begin
         constant TEST_MATRIX_SIZE: INTEGER := 5;
         constant TEST_WEIGHT_SIZE: INTEGER := 3;
         constant accumulators: INTEGER := 0;
+        constant skip: INTEGER := 1;
 
     begin 
     
@@ -117,227 +91,107 @@ begin
         reset <= '0'; 
         
         -- reset phase 
-        for l in 0 to (ACTIVATION_LINES-1) loop
-            rows_init_in(l) <= '1';
-            rows_valid_in(l) <= '0';
-            weights_init_in(l) <= '1';
-            weights_valid_in(l) <= '0';
-            accumulators_init_in(l) <= '1';
-            accumulators_valid_in(l) <= '0';
-            enables_in(l) <= '0';
-        
-            rows_in(l) <= (others => '0');
-            
-            if (l<WEIGHT_LINES) then 
-                weights_in(l) <= (others => '0');
-            end if;
-            
-            if (l<ACCUMULATION_LINES) then 
-                accumulators_in(l) <= STD_LOGIC_VECTOR(TO_UNSIGNED(accumulators,ACCUMULATOR_SIZE));
-            end if; 
+        for l in 0 to (CONTROL_LINES-1) loop
+            controls_in(l)(ACTIVATION_INIT_BIT) <= '1';
+            controls_in(l)(WEIGHT_INIT_BIT) <= '1';
+            controls_in(l)(ACCUMULATOR_INIT_BIT) <= '1';
+            controls_in(l)(WEIGHT_VALID_BIT) <= '0';
+            controls_in(l)(ACTIVATION_VALID_BIT) <= '0';
+            controls_in(l)(ENABLE_BIT) <= '0';
+            controls_in(l)(PROCESS_TYPE_BIT) <= '0';
+            controls_in(l)(ACTIVATION_SKIP_MS_BIT downto ACTIVATION_SKIP_LS_BIT) <= STD_LOGIC_VECTOR(to_unsigned(1,QUEUE_COUNTERS_SIZE));
         end loop; 
+        
+        for l in 0 to (STATUS_LINES-1) loop 
+            status_in(l)(ACCUMULATOR_VALID_BIT) <= '0';
+        end loop;
         
         wait until falling_edge(clk); 
 
         --loading phase 
-        for e in 0 to (TEST_WEIGHT_SIZE-1) loop 
-            for l in 0 to (ACTIVATION_LINES-1) loop
-                if (l<TEST_MATRIX_SIZE) then 
-                    rows_valid_in(l) <= '1';
-                    rows_in(l) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(l,e),DATA_SIZE));
+        for e in 0 to (TEST_MATRIX_SIZE-1) loop
+            for l in 0 to (CONTROL_LINES-1) loop
+                controls_in(l)(ACTIVATION_INIT_BIT) <= '0';
+                controls_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
+                controls_in(l)(WEIGHT_INIT_BIT) <= '0';
+                controls_in(l)(ENABLE_BIT) <= '0';
+                controls_in(l)(PROCESS_TYPE_BIT) <= '0';
+                
+                if (l<TEST_MATRIX_SIZE and l<ACTIVATION_LINES) then 
+                    controls_in(l)(ACTIVATION_VALID_BIT) <= '1';
                 else 
-                    rows_valid_in(l) <= '0';
-                end if; 
-                if (l<TEST_WEIGHT_SIZE and l<WEIGHT_LINES) then 
-                    weights_valid_in(l) <= '1';
-                    weights_in(l) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_WEIGHT(l,e),DATA_SIZE));
-                else 
-                    weights_valid_in(l) <= '0';
+                    controls_in(l)(ACTIVATION_VALID_BIT) <= '0';
                 end if;
-                if (l<ACCUMULATION_LINES) then 
-                    accumulators_in(l) <= STD_LOGIC_VECTOR(TO_UNSIGNED(accumulators,ACCUMULATOR_SIZE));
-                end if; 
-                
-                rows_init_in(l) <= '0';
-                weights_init_in(l) <= '0';
-                accumulators_init_in(l) <= '0';
+                if (l<TEST_WEIGHT_SIZE and e<TEST_WEIGHT_SIZE) then 
+                    controls_in(l)(WEIGHT_VALID_BIT) <= '1';
+                else
+                    controls_in(l)(WEIGHT_VALID_BIT) <= '0';
+                end if;
             end loop; 
-            
-            wait until falling_edge(clk);
-        end loop;  
-        
-        for c in 0 to (WEIGHT_LINES-1) loop 
-            weights_valid_in(c) <= '0';
-        end loop;
-
-        --computing phase 
-        for round in 0 to ((TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE)*2) loop 
-            for l in 0 to (ACTIVATION_LINES-1) loop
-                if ((round-l) >= 0 and (round-l)<(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE) and l<TEST_WEIGHT_SIZE) then 
-                    rows_valid_in(l) <= '1';
-                    rows_in(l) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(l,TEST_WEIGHT_SIZE+round-l),DATA_SIZE));
-                    enables_in(l) <= '1';
-                else 
-                    rows_valid_in(l) <= '0';
-                end if; 
-                if (l<ACCUMULATION_LINES) then 
-                    accumulators_in(l) <= STD_LOGIC_VECTOR(TO_UNSIGNED(accumulators,ACCUMULATOR_SIZE));
-                end if; 
-                
-                accumulators_init_in(l) <= '0';
-                accumulators_valid_in(l) <= '0';
-            end loop; 
-                 
-            wait until falling_edge(clk);
-            
-            for l in 0 to (ACTIVATION_LINES-1) loop 
-                rows_valid_in(l) <= '0';
-            end loop;  
-            
-            for i in 0 to TEST_WEIGHT_SIZE-2 loop
-                wait until falling_edge(clk);
+            for l in 0 to (TEST_MATRIX_SIZE-1) loop 
+                activations_in(l) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(l,e),DATA_SIZE));
             end loop;
             
-            for l in 0 to (ACTIVATION_LINES-1) loop
-                if ((round-l) >= 0 and (round-l)<=(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE) and l<TEST_WEIGHT_SIZE) then 
-                    accumulators_init_in(l) <= '1';
-                    accumulators_valid_in(l) <= '1';
-                else 
-                    accumulators_init_in(l) <= '0';
-                    accumulators_valid_in(l) <= '0';
-                    enables_in(l) <= '0';
-                end if; 
-            end loop; 
+            if (e<TEST_WEIGHT_SIZE) then 
+                for l in 0 to (TEST_WEIGHT_SIZE-1) loop 
+                    weights_in(l) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_WEIGHT(l,e),DATA_SIZE));
+                end loop;
+            end if;
             
             wait until falling_edge(clk);
-            
         end loop;
+
+        --processing phase 
         
-        for l in 0 to (ACTIVATION_LINES-1) loop 
-            rows_init_in(l) <= '0';
-            rows_valid_in(l) <= '0';
-            weights_init_in(l) <= '0';
-            weights_valid_in(l) <= '0';
-            accumulators_init_in(l) <= '0';
-            enables_in(l) <= '0';
+        for l in 0 to (CONTROL_LINES-1) loop
+            controls_in(l)(ACTIVATION_INIT_BIT) <= '0';
+            controls_in(l)(WEIGHT_INIT_BIT) <= '0';
+            controls_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
+            controls_in(l)(WEIGHT_VALID_BIT) <= '0';
+            controls_in(l)(ACTIVATION_VALID_BIT) <= '0';
+            controls_in(l)(PROCESS_TYPE_BIT) <= '0';
+            
+            if (l < TEST_WEIGHT_SIZE) then 
+                controls_in(l)(ENABLE_BIT) <= '1';
+            else 
+                controls_in(l)(ENABLE_BIT) <= '0';
+            end if;
+            
+        end loop; 
+        
+        for i in 0 to (TEST_WEIGHT_SIZE*8) loop 
+            wait until falling_edge(clk);  
         end loop;
-    
-    
---        reset <= '1'; 
---        wait until falling_edge(clk);
---        wait until falling_edge(clk);
---        reset <= '0'; 
+            
+        -- unloading phase 
         
---        -- reset phase 
---        for r in 0 to (ACTIVATION_LINES-1) loop 
---            rows_in(r) <= (others => '0');
---            rows_init_in(r) <= '1';
---            rows_valid_in(r) <= '0';
---        end loop; 
---        for w in 0 to (WEIGHT_LINES-1) loop
---            weights_in(w) <= (others => '0');
---            weights_init_in(w) <= '1';
---            weights_valid_in(w) <= '0';
---        end loop; 
---        for a in 0 to (ACCUMULATION_LINES-1) loop 
---            accumulators_in(a) <= STD_LOGIC_VECTOR(TO_UNSIGNED(accumulators,ACCUMULATOR_SIZE));
---            accumulators_init_in(a) <= '1';
---            accumulators_valid_in(a) <= '0';
---            enables_in(a) <= '0';
---        end loop; 
+        for l in 0 to (CONTROL_LINES-1) loop
+            controls_in(l)(ACTIVATION_INIT_BIT) <= '0';
+            controls_in(l)(WEIGHT_INIT_BIT) <= '0';
+            controls_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
+            controls_in(l)(WEIGHT_VALID_BIT) <= '0';
+            controls_in(l)(ACTIVATION_VALID_BIT) <= '0';
+            controls_in(l)(PROCESS_TYPE_BIT) <= '1';
+            
+            if (l < TEST_WEIGHT_SIZE) then 
+                controls_in(l)(ENABLE_BIT) <= '1';
+            else 
+                controls_in(l)(ENABLE_BIT) <= '0';
+            end if;
+        end loop; 
         
---        wait until falling_edge(clk); 
-
---        --loading phase 
---        for e in 0 to (TEST_WEIGHT_SIZE-1) loop 
---            for r in 0 to (ACTIVATION_LINES-1) loop 
---                if (r<TEST_MATRIX_SIZE and r<ACTIVATION_LINES) then 
---                    rows_in(r) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(r,e),DATA_SIZE));
---                    rows_init_in(r) <= '0';
---                    rows_valid_in(r) <= '1';
---                end if; 
---            end loop; 
---            for w in 0 to (WEIGHT_LINES-1) loop
---                if (w<TEST_WEIGHT_SIZE and w<WEIGHT_LINES) then 
---                    weights_in(w) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_WEIGHT(w,e),DATA_SIZE));
---                    weights_init_in(w) <= '0';
---                    weights_valid_in(w) <= '1';
---                end if; 
---            end loop; 
---            for a in 0 to (ACCUMULATION_LINES-1) loop 
---                accumulators_init_in(a) <= '0';
---            end loop;
---            wait until falling_edge(clk);
---        end loop;  
-        
---        for w in 0 to (WEIGHT_LINES-1) loop
---            weights_in(w) <= (others => '0');
---            weights_init_in(w) <= '0';
---            weights_valid_in(w) <= '0';
---        end loop; 
-
---        --computing phase 
---        for round in 0 to ((TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE)*2) loop 
---            for r in 0 to (ACTIVATION_LINES-1) loop 
---                if (round-r<(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE) and (round-r)>=0 and (round-r)<TEST_MATRIX_SIZE) then 
---                    rows_in(r) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(r,TEST_WEIGHT_SIZE+round-r),DATA_SIZE));
---                    rows_valid_in(r) <= '1';
---                else 
---                    rows_in(r) <= (others => '0');
---                    rows_valid_in(r) <= '0';
---                end if; 
---            end loop; 
---            for a in 0 to (ACCUMULATION_LINES-1) loop 
-----                if (a<TEST_WEIGHT_SIZE) then 
-----                    accumulators_init_in(a) <= '0';
-----                    accumulators_valid_in(a) <= '0';
-----                    enables_in(a) <= '1';
-----                end if;
---                if (round-a<TEST_WEIGHT_SIZE and round-a>=0 and a<TEST_WEIGHT_SIZE) then 
---                    accumulators_init_in(a) <= '0';
---                    accumulators_valid_in(a) <= '0';
---                    enables_in(a) <= '1';
---                end if;
---            end loop;
-            
---            wait until falling_edge(clk);
-            
---            for r in 0 to (ACTIVATION_LINES-1) loop 
---                rows_valid_in(r) <= '0';
---            end loop;  
-            
---            --wait until falling_edge(clk);
-            
---            for i in 0 to TEST_WEIGHT_SIZE-2 loop
---                wait until falling_edge(clk);
---            end loop;
-            
---            for a in 0 to (ACCUMULATION_LINES-1) loop 
---                if (round-a<TEST_WEIGHT_SIZE and round-a>=0 and a<TEST_WEIGHT_SIZE) then 
---                    accumulators_init_in(a) <= '1';
---                    accumulators_valid_in(a) <= '1';
---                end if;
---            end loop;
+        for l in 0 to (STATUS_LINES-1) loop 
+            if (l < TEST_WEIGHT_SIZE) then 
+                status_in(l)(ACCUMULATOR_VALID_BIT) <= '1';
+            else 
+                status_in(l)(ACCUMULATOR_VALID_BIT) <= '0';
+            end if;
            
---            wait until falling_edge(clk);
-            
---        end loop;
+        end loop;
         
---        for r in 0 to (ACTIVATION_LINES-1) loop 
---            rows_init_in(r) <= '0';
---            rows_valid_in(r) <= '0';
---        end loop; 
---        for w in 0 to (WEIGHT_LINES-1) loop
---            weights_init_in(w) <= '0';
---            weights_valid_in(w) <= '0';
---        end loop; 
---        for a in 0 to (ACCUMULATION_LINES-1) loop 
---            accumulators_init_in(a) <= '0';
---            accumulators_valid_in(a) <= '0';
---            enables_in(a) <= '0';
---        end loop; 
-        
-        
+        for l in 0 to (ACCUMULATION_LINES-1) loop 
+            accumulators_in(l) <= (others => '0');
+        end loop;
         wait;
            
     end process; 

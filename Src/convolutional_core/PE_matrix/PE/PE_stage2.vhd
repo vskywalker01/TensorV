@@ -10,11 +10,13 @@ entity PE_stage2 is
         -- matrix forward lines
         
         control_forward_in:                 in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
+        status_forward_in:                  in STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
         weight_forward_in:                  in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
         activation_forward_in:              in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
         accumulator_forward_in:             in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0); 
         
         control_forward_out:                out STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);
+        status_forward_out:                 out STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
         weight_forward_out:                 out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
         activation_forward_out:             out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
         accumulator_forward_out:            out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
@@ -28,8 +30,7 @@ entity PE_stage2 is
         
         -- Queue control lines (Stage 1)
         
-        weight_empty_in:                    in STD_LOGIC;
-        activation_empty_in:                in STD_LOGIC;
+        queue_empty_in:                    in STD_LOGIC;
         accumulator_empty_in:               in STD_LOGIC;
         
         row_done_in:                        in STD_LOGIC;
@@ -88,25 +89,27 @@ begin
                 weight_forward_out <= weight_forward_in;
                 activation_forward_out <= activation_forward_in;
                 control_forward_out <= control_forward_in;
+                status_forward_out <= status_forward_in;
                 accumulator_forward_out <= accumulator_forward_in;
-                reduction_type_out <= row_done_in;
+                
                 
                 -- if the PE is currently processing a row (not done yet), the reduction_partial lines will assume the result of the multiplication between 
                 -- a valid weight and a valid activation coming from the queues in the first stage
                 
-                if (control_forward_in(ENABLE_BIT)='1' and control_forward_in(PROCESS_TYPE_BIT) = '0' and row_done_in = '0') then 
+                if (control_forward_in(ENABLE_BIT)='1' and control_forward_in(PROCESS_TYPE_BIT) = '0' and row_done_in = '0' and queue_empty_in = '0') then 
                     reduction_partial1_out <= mul_partial1;
                     reduction_partial2_out <= mul_partial2;
-                    reduction_valid_out <= not(weight_empty_in) and not(activation_empty_in);
+                    reduction_valid_out <= '1';
                     reduction_type_out <= '1';
                 
-                -- if the PE should process the accumulation stored in the accumulator queue from stage 1 (unloading phase, the reduction_partial1 line will assume the 
-                -- accumulation from the queue and reduction_partial2 line will assume 0. 
+                -- if the PE should process the accumulation stored in the accumulator queue from stage 1 (unloading phase), 
+                -- the reduction_partial1 line will assume the accumulation from the queue and reduction_partial2 line will assume 0.
+                -- This is done only when there is a valid accumulator input (data available from past PE).
                 
-                elsif (control_forward_in(ENABLE_BIT) = '1' and control_forward_in(PROCESS_TYPE_BIT) = '1') then
+                elsif (control_forward_in(ENABLE_BIT) = '1' and control_forward_in(PROCESS_TYPE_BIT) = '1' and status_forward_in(ACCUMULATOR_VALID_BIT)= '1' and accumulator_empty_in = '0') then
                     reduction_partial1_out <= accumulator_queue_in;
                     reduction_partial2_out <= (others => '0');
-                    reduction_valid_out <= not(accumulator_empty_in);           
+                    reduction_valid_out <= '1';           
                     reduction_type_out <= '0';
                     
                -- if the PE has processed a row, the accumulator will be pushed inside its queue in the third stage (the reduction is not valid)

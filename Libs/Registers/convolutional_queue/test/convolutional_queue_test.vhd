@@ -21,43 +21,45 @@ architecture behavioral of  convolutional_queue_test is
             clk: in STD_LOGIC;                                          -- clock 
             reset: in STD_LOGIC;                                        -- reset (when '1') 
             
-            init: in STD_LOGIC; 
-            move: in STD_LOGIC; 
-            add: in STD_LOGIC;
+            init: in STD_LOGIC;
     
+            add_weight: in STD_LOGIC;
+            add_activation: in STD_LOGIC;
             
+            move: in STD_LOGIC; 
+                    
             -- Data lines
-            data_in:         in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);           -- input port
-            data_out:        out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);          -- output port
+            activation_in:         in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);           -- input port
+            activation_out:        out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);          -- output port
             
-            size_in:         in STD_LOGIC_VECTOR(COUNTER_SIZE-1 downto 0); 
+            weight_in:             in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+            weight_out:            out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+            
             skip_in:         in STD_LOGIC_VECTOR(COUNTER_SIZE-1 downto 0);
             
-            empty_out:           out STD_LOGIC;
-            done_out:            out STD_LOGIC           
-        );
+            empty_out:           out STD_LOGIC;         
+            done_out:            out STD_LOGIC 
+        );  
     end component;
     
-    signal clk,reset, init,add,move, empty, done: STD_LOGIC;
-    signal data_in,data_out: STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-    signal skip_in, size_in: STD_LOGIC_VECTOR(COUNTER_SIZE-1 downto 0);
+    signal clk,reset, init, add_weight, add_activation, move, empty, done: STD_LOGIC;
+    signal activation_in,activation_out,weight_in,weight_out: STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+    signal skip_in: STD_LOGIC_VECTOR(COUNTER_SIZE-1 downto 0);
 begin 
 
     queue: convolutional_queue 
---        generic map (
---            DATA_SIZE => DATA_SIZE,
---            REGISTERS => REGISTERS
---        )
         port map (
             clk => clk, 
             reset => reset, 
             init => init, 
-            add => add, 
+            add_activation => add_activation,
+            add_weight => add_weight, 
             move => move,
-            data_in => data_in, 
-            data_out => data_out,
+            weight_in => weight_in, 
+            weight_out => weight_out,
+            activation_in => activation_in,
+            activation_out => activation_out,
             skip_in => skip_in,
-            size_in => size_in,
             empty_out => empty,
             done_out => done
         );
@@ -72,7 +74,9 @@ begin
     
     test: process 
         variable counter: INTEGER := 1;
-        variable size: INTEGER := 5;
+        variable weight_counter: INTEGER := 10;
+        variable weight_size: INTEGER := 3;
+        variable activation_size: INTEGER := 7;
     begin 
         reset <= '1'; 
 
@@ -80,95 +84,157 @@ begin
         -- first test (skip =1, size>skip, the queue is not full)
         reset <= '0';
         init <='1'; 
-        size_in <= STD_LOGIC_VECTOR(to_unsigned(size,COUNTER_SIZE)); 
         skip_in <= STD_LOGIC_VECTOR(to_unsigned(1,COUNTER_SIZE));
         
-        add <= '0'; 
+        add_weight <= '0'; 
+        add_activation <= '0';
         move <= '0'; 
-        data_in <= (others => '0');
+        weight_in <= (others => '0');
+        activation_in <= (others => '0');
         
         for i in 0 to 2 loop 
             wait until rising_edge(clk);
         end loop;
+        
         init <= '0';
-        add <= '1'; 
+        add_activation <= '1'; 
 
              
-        for i in 0 to REGISTERS-2 loop 
-            data_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(counter,DATA_SIZE));  
+        for i in 0 to ACTIVATION_SIZE-1 loop 
+            activation_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(counter,DATA_SIZE));  
+            if (i < WEIGHT_SIZE) then 
+                add_weight <= '1';
+                weight_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(weight_counter,DATA_SIZE));
+                weight_counter := weight_counter +1;
+            else 
+                add_weight <= '0';
+            end if; 
             counter := counter+1;     
             wait until rising_edge(clk);
         end loop;
         
-        add <= '0'; 
+        add_activation <= '0'; 
         move <= '1';
 
-        for i in 0 to (size*3)+3 loop 
+        for i in 0 to (ACTIVATION_SIZE*3)+3 loop 
             wait until rising_edge(clk);
         end loop;
 
-        
-        -- second test (skip > size, the queue is not full)
-                
+         -- second test (skip = activation_size)
+
         init <='1'; 
-        size_in <= STD_LOGIC_VECTOR(to_unsigned(size,COUNTER_SIZE)); 
-        skip_in <= STD_LOGIC_VECTOR(to_unsigned(size+1,COUNTER_SIZE));
+        skip_in <= STD_LOGIC_VECTOR(to_unsigned(ACTIVATION_SIZE,COUNTER_SIZE));
         
-        add <= '0'; 
+        add_weight <= '0'; 
+        add_activation <= '0';
         move <= '0'; 
-        data_in <= (others => '0');
+        weight_in <= (others => '0');
+        activation_in <= (others => '0');
         
         for i in 0 to 2 loop 
             wait until rising_edge(clk);
         end loop;
+        
         init <= '0';
-        add <= '1'; 
+        add_activation <= '1'; 
 
              
-        for i in 0 to REGISTERS-2 loop 
-            data_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(counter,DATA_SIZE));  
+        for i in 0 to ACTIVATION_SIZE-1 loop 
+            activation_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(counter,DATA_SIZE));  
+            if (i < WEIGHT_SIZE) then 
+                add_weight <= '1';
+                weight_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(weight_counter,DATA_SIZE));
+                weight_counter := weight_counter +1;
+            else 
+                add_weight <= '0';
+            end if; 
             counter := counter+1;     
             wait until rising_edge(clk);
         end loop;
         
-        add <= '0'; 
+        add_activation <= '0'; 
         move <= '1';
-        
-        for i in 0 to (size*3)+3 loop 
+
+        for i in 0 to (ACTIVATION_SIZE*3)+3 loop 
             wait until rising_edge(clk);
         end loop;
-        
-        -- third test (the queue is full)
-        
+
+         -- third test (activation queue overflow)
+
         init <='1'; 
-        size_in <= STD_LOGIC_VECTOR(to_unsigned(size,COUNTER_SIZE)); 
-        skip_in <= STD_LOGIC_VECTOR(to_unsigned(size-2,COUNTER_SIZE));
+        skip_in <= STD_LOGIC_VECTOR(to_unsigned(ACTIVATION_SIZE,COUNTER_SIZE));
         
-        add <= '0'; 
+        add_weight <= '0'; 
+        add_activation <= '0';
         move <= '0'; 
-        data_in <= (others => '0');
+        weight_in <= (others => '0');
+        activation_in <= (others => '0');
         
         for i in 0 to 2 loop 
             wait until rising_edge(clk);
         end loop;
+        
         init <= '0';
-        add <= '1'; 
+        add_activation <= '1'; 
 
              
-        for i in 0 to REGISTERS+2 loop 
-            data_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(counter,DATA_SIZE));  
+        for i in 0 to ACTIVATION_SIZE+5 loop 
+            activation_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(counter,DATA_SIZE));  
+            if (i < WEIGHT_SIZE) then 
+                add_weight <= '1';
+                weight_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(weight_counter,DATA_SIZE));
+                weight_counter := weight_counter +1;
+            else 
+                add_weight <= '0';
+            end if; 
             counter := counter+1;     
             wait until rising_edge(clk);
         end loop;
         
-        add <= '0'; 
+        add_activation <= '0'; 
         move <= '1';
+
+        for i in 0 to (ACTIVATION_SIZE*3)+3 loop 
+            wait until rising_edge(clk);
+        end loop;
+
+         -- fourth test (activation and weight queue overflow)
+
+        init <='1'; 
+        skip_in <= STD_LOGIC_VECTOR(to_unsigned(ACTIVATION_SIZE,COUNTER_SIZE));
         
-        for i in 0 to (size*2)+3 loop 
+        add_weight <= '0'; 
+        add_activation <= '0';
+        move <= '0'; 
+        weight_in <= (others => '0');
+        activation_in <= (others => '0');
+        
+        for i in 0 to 2 loop 
             wait until rising_edge(clk);
         end loop;
         
+        init <= '0';
+        add_activation <= '1'; 
+        add_weight <= '1';
+             
+        for i in 0 to ACTIVATION_SIZE+5 loop 
+            activation_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(counter,DATA_SIZE));  
+            weight_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(weight_counter,DATA_SIZE));
+            weight_counter := weight_counter +1;
+            counter := counter+1;     
+            wait until rising_edge(clk);
+        end loop;
+        
+        add_activation <= '0'; 
+        add_weight <= '0';
+        move <= '1';
+
+        for i in 0 to (ACTIVATION_SIZE*3)+3 loop 
+            wait until rising_edge(clk);
+        end loop;
+
         move <= '0';
+        
         wait;
         
     end process;

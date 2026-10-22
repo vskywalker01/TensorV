@@ -40,12 +40,9 @@ architecture Behavioral of queue is
 
     signal tail: UNSIGNED(COUNTER_SIZE-1 downto 0);
     signal head: UNSIGNED(COUNTER_SIZE-1 downto 0);
-    signal full, empty: STD_LOGIC;
     
 begin     
-    full <= '1' when (tail = (head-1) mod REGISTERS) else '0'; 
-    empty <= '1' when (tail = (head) mod REGISTERS) else '0';
-    empty_out <= empty;
+
     queue: process (clk) 
         variable index: INTEGER; 
     begin 
@@ -54,27 +51,21 @@ begin
                 data_out <= (others => '0');
                 head <= (others => '0');
                 tail <= (others => '0');
-                --empty_out <= '1';
+                empty_out <= '1';
             else           
-                if (push = '1' and pop = '0' and not(tail = (head-1) mod REGISTERS)) then 
+                if (push = '1' and not (tail = (head-1) mod REGISTERS)) then            
                     register_file(to_integer(tail)) <= data_in;
-                    tail <= (tail + 1); -- mod REGISTER;;  
+                    tail <= (tail + 1); -- mod REGISTERS; 
                 end if; 
-                if (push = '1' and pop = '1' ) then 
-                    if (not(tail = (head) mod REGISTERS)) then 
-                        register_file(to_integer(tail)) <= data_in;
-                        tail <= (tail + 1); -- mod REGISTERS; 
-                        data_out <= register_file(to_integer(head));
-                        head <= (head + 1); -- mod REGISTERS; 
-                    else 
-                        data_out <= data_in;
-                    end if;
-                end if; 
-                
-                if (push = '0' and pop = '1' and not(tail = head)) then
+                if (pop = '1' and not (tail = head)) then 
                     data_out <= register_file(to_integer(head));
                     head <= (head + 1); -- mod REGISTERS; 
-                end if; 
+                end if;
+                if (tail = head) then 
+                    empty_out <= '1';
+                else 
+                    empty_out <= '0';
+                end if;
             end if; 
         end if;
     end process;

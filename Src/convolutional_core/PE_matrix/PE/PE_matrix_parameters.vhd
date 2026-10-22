@@ -13,15 +13,15 @@ package PE_MATRIX_PARAMETERS is
     constant DATA_SIZE: INTEGER := 8;
     constant ACCUMULATOR_SIZE: INTEGER := (DATA_SIZE*2)+INTEGER(ceil(log2(REAL(DEPTH))));
     
-    constant CONTROL_SIZE: INTEGER := (2*QUEUE_COUNTERS_SIZE)+7; 
+    
+    -- Definition of control bus
+    -- This connections are use to control the PE 
+    constant CONTROL_SIZE: INTEGER := QUEUE_COUNTERS_SIZE+7; 
     
     constant ACTIVATION_SKIP_MS_BIT: INTEGER := CONTROL_SIZE-1;
     constant ACTIVATION_SKIP_LS_BIT: INTEGER := ACTIVATION_SKIP_MS_BIT-QUEUE_COUNTERS_SIZE+1;
     
-    constant ACTIVATION_SIZE_MS_BIT: INTEGER := ACTIVATION_SKIP_LS_BIT-1;
-    constant ACTIVATION_SIZE_LS_BIT: INTEGER := ACTIVATION_SIZE_MS_BIT-QUEUE_COUNTERS_SIZE+1;
-    
-    constant ACTIVATION_INIT_BIT:    INTEGER := ACTIVATION_SIZE_LS_BIT-1; 
+    constant ACTIVATION_INIT_BIT:    INTEGER := ACTIVATION_SKIP_LS_BIT-1; 
     constant WEIGHT_INIT_BIT:        INTEGER := ACTIVATION_INIT_BIT-1;
     constant ACCUMULATOR_INIT_BIT:   INTEGER := WEIGHT_INIT_BIT-1;
     
@@ -31,38 +31,45 @@ package PE_MATRIX_PARAMETERS is
     constant ENABLE_BIT:             INTEGER := WEIGHT_VALID_BIT-1; 
     constant PROCESS_TYPE_BIT:       INTEGER := ENABLE_BIT-1; 
     
+    -- Definition of status bus
+    -- These line are used to communicate the internal state of the PE 
+    
+    constant STATUS_SIZE:            INTEGER := 1;
+    constant ACCUMULATOR_VALID_BIT:  INTEGER := STATUS_SIZE-1;
+    
+    constant CONTROL_LINES:          INTEGER := DEPTH;
     constant ACTIVATION_LINES:       INTEGER := (DEPTH*2)-1; 
     constant WEIGHT_LINES:           INTEGER := (DEPTH);
     constant ACCUMULATION_LINES:     INTEGER := (DEPTH);
+    constant STATUS_LINES:           INTEGER := DEPTH;
     
     type MATRIX_INTERCONNECT_DATA is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
     type MATRIX_INTERCONNECT_ACCUMULATOR is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
     type MATRIX_INTERCONNECT_CONTROL is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);
+    type MATRIX_INTERCONNECT_STATUS is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
     
-    type MATRIX_ROWS_INTERFACE is array (ACTIVATION_LINES-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
-    type MATRIX_ROWS_CONTROL_INTERFACE is array (WEIGHT_LINES-1 downto 0) of STD_LOGIC; 
+    type MATRIX_CONTROL_INTERFACE is array (CONTROL_LINES-1 downto 0) of STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);
+    type MATRIX_ACTIVATION_INTERFACE is array (ACTIVATION_LINES-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
     type MATRIX_WEIGHTS_INTERFACE is array (WEIGHT_LINES-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-    --type MATRIX_WEIGHTS_CONTROL_INTERFACE is array (WEIGHT_LINES-1 downto 0) of STD_LOGIC; 
-    type MATRIX_WEIGHTS_CONTROL_INTERFACE is array (ACTIVATION_LINES-1 downto 0) of STD_LOGIC; 
     type MATRIX_ACCUMULATORS_INTERFACE is array (ACCUMULATION_LINES-1 downto 0) of STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
-    --type MATRIX_ACCUMULATORS_CONTROL_INTERFACE is array (ACCUMULATION_LINES-1 downto 0) of STD_LOGIC;
-    type MATRIX_ACCUMULATORS_CONTROL_INTERFACE is array (ACTIVATION_LINES-1 downto 0) of STD_LOGIC;
+    type MATRIX_STATUS_INTERFACE is array (STATUS_LINES-1 downto 0) of STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
     
     component PE is 
         Port ( 
             clk:                    in STD_LOGIC;  
             reset:                  in STD_LOGIC;                 
             
-            control_in:             in STD_LOGIC_VECTOR(6 downto 0); 
-            weight_in:              in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
-            activation_in:          in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+            control_in:             in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
+            status_in:              in STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
+            weight_in:              in STD_LOGIC_VECTOR( DATA_SIZE-1 downto 0); 
+            activation_in:          in STD_LOGIC_VECTOR( DATA_SIZE-1 downto 0);
             accumulator_in:         in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0); 
             
             control_out:            out STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);
+            status_out:             out STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
             weight_out:             out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
             activation_out:         out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             accumulator_out:        out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0)
-            
         );
     end component;
     

@@ -48,16 +48,20 @@ package REGISTERS is
             clk: in STD_LOGIC;                                          -- clock 
             reset: in STD_LOGIC;                                        -- reset (when '1') 
             
-            init: in STD_LOGIC; 
-            move: in STD_LOGIC; 
-            add: in STD_LOGIC;
+            init: in STD_LOGIC;
     
+            add_weight: in STD_LOGIC;
+            add_activation: in STD_LOGIC;
             
+            move: in STD_LOGIC; 
+                    
             -- Data lines
-            data_in:         in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);           -- input port
-            data_out:        out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);          -- output port
+            activation_in:         in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);           -- input port
+            activation_out:        out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);          -- output port
             
-            size_in:         in STD_LOGIC_VECTOR(COUNTER_SIZE-1 downto 0); 
+            weight_in:             in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+            weight_out:            out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+            
             skip_in:         in STD_LOGIC_VECTOR(COUNTER_SIZE-1 downto 0);
             
             empty_out:           out STD_LOGIC;         
