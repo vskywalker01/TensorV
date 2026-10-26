@@ -52,13 +52,13 @@ begin
     data_queue: convolutional_queue 
         generic map ( 
             DATA_SIZE => DATA_SIZE, 
-            REGISTERS => QUEUE_SIZE,
-            COUNTER_SIZE => QUEUE_COUNTERS_SIZE
+            COUNTER_BITS => QUEUE_COUNTERS_SIZE
         ) 
         port map (
             clk => clk, 
             reset => reset, 
-            init => control_forward_in(WEIGHT_INIT_BIT), 
+            init_weight => control_forward_in(WEIGHT_INIT_BIT), 
+            init_activation => control_forward_in(ACTIVATION_INIT_BIT),  
             move => move_data_queue, 
             add_weight => control_forward_in(WEIGHT_VALID_BIT), 
             add_activation => control_forward_in(ACTIVATION_VALID_BIT),
@@ -73,8 +73,7 @@ begin
     accumulations_queue: queue 
         generic map ( 
             DATA_SIZE => ACCUMULATOR_SIZE, 
-            REGISTERS => QUEUE_SIZE,
-            COUNTER_SIZE => QUEUE_COUNTERS_SIZE
+            COUNTER_BITS => QUEUE_COUNTERS_SIZE
         ) 
         port map (
             clk => clk, 

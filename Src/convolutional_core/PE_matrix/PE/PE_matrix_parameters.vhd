@@ -10,6 +10,9 @@ package PE_MATRIX_PARAMETERS is
     constant QUEUE_SIZE: INTEGER := 8;
     constant QUEUE_COUNTERS_SIZE: INTEGER := get_register_address_size(QUEUE_SIZE);
     
+    constant BUFFER_SIZE: INTEGER := 16; 
+    constant BUFFER_COUNTERS_SIZE: INTEGER := get_register_address_size(BUFFER_SIZE);
+    
     constant DATA_SIZE: INTEGER := 8;
     constant ACCUMULATOR_SIZE: INTEGER := (DATA_SIZE*2)+INTEGER(ceil(log2(REAL(DEPTH))));
     
@@ -43,34 +46,35 @@ package PE_MATRIX_PARAMETERS is
     constant ACCUMULATION_LINES:     INTEGER := (DEPTH);
     constant STATUS_LINES:           INTEGER := DEPTH;
     
+    -- Definition of the core's control interface 
+    
+    constant BUFFER_INTERFACE_SIZE:           INTEGER := QUEUE_COUNTERS_SIZE+3;
+    constant BUFFER_INTERFACE_INIT_BIT:       INTEGER := BUFFER_INTERFACE_SIZE-1; 
+    constant BUFFER_INTERFACE_ADD_BIT:        INTEGER := BUFFER_INTERFACE_INIT_BIT-1;
+    constant BUFFER_INTERFACE_SEND_BIT:       INTEGER := BUFFER_INTERFACE_ADD_BIT-1;
+    constant BUFFER_INTERFACE_SEND_SIZE_MSB:  INTEGER := BUFFER_INTERFACE_SEND_BIT-1;
+    constant BUFFER_INTERFACE_SEND_SIZE_LSB:  INTEGER := BUFFER_INTERFACE_SEND_SIZE_MSB-QUEUE_COUNTERS_SIZE+1;
+    
+    constant BUFFER_STATUS_SIZE:              INTEGER := 1; 
+    constant BUFFER_STATUS_READY_BIT:         INTEGER := BUFFER_STATUS_SIZE-1;
+
     type MATRIX_INTERCONNECT_DATA is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
     type MATRIX_INTERCONNECT_ACCUMULATOR is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
     type MATRIX_INTERCONNECT_CONTROL is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);
     type MATRIX_INTERCONNECT_STATUS is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
     
     type MATRIX_CONTROL_INTERFACE is array (CONTROL_LINES-1 downto 0) of STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);
-    type MATRIX_ACTIVATION_INTERFACE is array (ACTIVATION_LINES-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
-    type MATRIX_WEIGHTS_INTERFACE is array (WEIGHT_LINES-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-    type MATRIX_ACCUMULATORS_INTERFACE is array (ACCUMULATION_LINES-1 downto 0) of STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
-    type MATRIX_STATUS_INTERFACE is array (STATUS_LINES-1 downto 0) of STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
     
-    component PE is 
-        Port ( 
-            clk:                    in STD_LOGIC;  
-            reset:                  in STD_LOGIC;                 
-            
-            control_in:             in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
-            status_in:              in STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
-            weight_in:              in STD_LOGIC_VECTOR( DATA_SIZE-1 downto 0); 
-            activation_in:          in STD_LOGIC_VECTOR( DATA_SIZE-1 downto 0);
-            accumulator_in:         in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0); 
-            
-            control_out:            out STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);
-            status_out:             out STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
-            weight_out:             out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
-            activation_out:         out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-            accumulator_out:        out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0)
-        );
-    end component;
+    type MATRIX_ACTIVATIONS_DATA_INTERFACE is array (ACTIVATION_LINES-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+    type MATRIX_ACTIVATIONS_CONTROL_INTERFACE is array (ACTIVATION_LINES-1 downto 0) of STD_LOGIC_VECTOR(BUFFER_INTERFACE_SIZE-1 downto 0);
+    type MATRIX_ACTIVATIONS_STATUS_INTERFACE is array (ACTIVATION_LINES-1 downto 0) of STD_LOGIC_VECTOR(BUFFER_STATUS_SIZE-1 downto 0);
+    
+    type MATRIX_WEIGHTS_DATA_INTERFACE is array (WEIGHT_LINES-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+    type MATRIX_WEIGHTS_CONTROL_INTERFACE is array (WEIGHT_LINES-1 downto 0) of STD_LOGIC_VECTOR(BUFFER_INTERFACE_SIZE-1 downto 0);
+    type MATRIX_WEIGHTS_STATUS_INTERFACE is array (WEIGHT_LINES-1 downto 0) of STD_LOGIC_VECTOR(BUFFER_STATUS_SIZE-1 downto 0);
+    
+    type MATRIX_OUTPUTS_DATA_INTERFACE is array (ACCUMULATION_LINES-1 downto 0) of STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
+    type MATRIX_OUTPUTS_CONTROL_INTERFACE is array (ACCUMULATION_LINES-1 downto 0) of STD_LOGIC_VECTOR(BUFFER_INTERFACE_SIZE-1 downto 0);
+    type MATRIX_OUTPUTS_STATUS_INTERFACE is array (ACCUMULATION_LINES-1 downto 0) of STD_LOGIC_VECTOR(BUFFER_STATUS_SIZE-1 downto 0);
     
 end package; 

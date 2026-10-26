@@ -64,7 +64,7 @@ begin
     end process;
     
     test: process 
-        variable counter: INTEGER := 0;
+        variable counter: INTEGER := 10;
     begin 
         reset <= '1';
 
@@ -99,7 +99,7 @@ begin
         for i in 0 to REGISTERS-3 loop 
             wait until rising_edge(clk);
         end loop;
-                
+  
         data_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(counter,DATA_SIZE)); 
         push <= '1';
         pop <= '1'; 
@@ -107,6 +107,25 @@ begin
             wait until rising_edge(clk);
             push <= '0';
         end loop;
+        
+        --
+        
+        push <= '1'; 
+        pop <= '0';
+        for i in 0 to REGISTERS-1 loop 
+            data_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(counter,DATA_SIZE));  
+            counter := counter+1;     
+            wait until rising_edge(clk);
+        end loop;
+        
+        push <= '0'; 
+        pop <= '1';
+  
+        for i in 0 to (REGISTERS*2)-1 loop     
+            wait until rising_edge(clk);
+            push <= '0';
+        end loop;
+        
         pop <= '0';
         push <= '0'; 
         wait;

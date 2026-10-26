@@ -36,7 +36,8 @@ entity PE_stage3 is
         
     );
 end PE_stage3;
- 
+
+
 architecture Behavioral of PE_stage3 is    
     component accumulation_stage is
         Generic (

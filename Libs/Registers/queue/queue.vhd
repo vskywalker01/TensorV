@@ -8,8 +8,7 @@ use IEEE.math_real.ALL;
 entity queue is 
     Generic (
         DATA_SIZE:      INTEGER := 8;
-        REGISTERS:      INTEGER := 8;
-        COUNTER_SIZE:   INTEGER := 3
+        COUNTER_BITS:   INTEGER := 3
     );
     Port (
         -- Control lines 
@@ -32,17 +31,20 @@ entity queue is
 end queue;
 
 architecture Behavioral of queue is
-
-    type REGISTER_ARRAY         is array (REGISTERS-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+    constant REGISTERS: INTEGER := 2 ** COUNTER_BITS; 
+    type REGISTER_ARRAY is array (REGISTERS-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+    
     
     -- The registers are defined as an array of vectors;
-    signal register_file: REGISTER_ARRAY; 
-
-    signal tail: UNSIGNED(COUNTER_SIZE-1 downto 0);
-    signal head: UNSIGNED(COUNTER_SIZE-1 downto 0);
+    signal register_file:   REGISTER_ARRAY; 
+    signal tail:            UNSIGNED(COUNTER_BITS downto 0);
+    signal head:            UNSIGNED(COUNTER_BITS downto 0);
+    signal lsb_equal, msb_equal:   STD_LOGIC;
     
 begin     
-
+    lsb_equal <= '1' when (tail(COUNTER_BITS-1 downto 0) = head(COUNTER_BITS-1 downto 0)) else '0';
+    msb_equal <= '1' when (tail(COUNTER_BITS) = head(COUNTER_BITS)) else '0';
+   
     queue: process (clk) 
         variable index: INTEGER; 
     begin 
@@ -53,15 +55,16 @@ begin
                 tail <= (others => '0');
                 empty_out <= '1';
             else           
-                if (push = '1' and not (tail = (head-1) mod REGISTERS)) then            
-                    register_file(to_integer(tail)) <= data_in;
-                    tail <= (tail + 1); -- mod REGISTERS; 
+                if (push = '1' and not(lsb_equal = '1' and msb_equal = '0')) then            
+                    register_file(to_integer(tail(COUNTER_BITS-1 downto 0))) <= data_in;
+                    tail <= (tail + 1); 
                 end if; 
-                if (pop = '1' and not (tail = head)) then 
-                    data_out <= register_file(to_integer(head));
-                    head <= (head + 1); -- mod REGISTERS; 
+                if (pop = '1' and not(lsb_equal = '1' and msb_equal = '1'))  then 
+                    data_out <= register_file(to_integer(head(COUNTER_BITS-1 downto 0)));
+                    head <= (head + 1);
                 end if;
-                if (tail = head) then 
+                
+                if ((lsb_equal = '1' and msb_equal = '1') and push = '0') then
                     empty_out <= '1';
                 else 
                     empty_out <= '0';
