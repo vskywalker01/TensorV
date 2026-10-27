@@ -37,7 +37,8 @@ architecture Behavioral of PE_matrix_test is
     signal activations_control_bus:             MATRIX_ACTIVATIONS_CONTROL_INTERFACE;
     signal outputs_data_in,outputs_data_out:    MATRIX_OUTPUTS_DATA_INTERFACE;
     signal outputs_control_bus:                 MATRIX_OUTPUTS_CONTROL_INTERFACE;
-    signal matrix_control_in:                  MATRIX_CONTROL_INTERFACE;
+    signal matrix_control_in:                   MATRIX_CONTROL_INTERFACE;
+    signal outputs_status_bus:                  MATRIX_OUTPUTS_STATUS_INTERFACE;
     
 begin
     
@@ -53,6 +54,7 @@ begin
             weights_control_bus => weights_control_bus, 
             activations_control_bus => activations_control_bus, 
             outputs_control_bus => outputs_control_bus, 
+            outputs_status_bus => outputs_status_bus,
             matrix_control_in => matrix_control_in
         );
 
@@ -134,9 +136,9 @@ begin
         
         -- resetting matrix queues
         for l in 0 to (CONTROL_LINES-1) loop
-            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '1';
-            matrix_control_in(l)(WEIGHT_INIT_BIT) <= '1';
-            matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '1';
+            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '0';
+            matrix_control_in(l)(WEIGHT_INIT_BIT) <= '0';
+            matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
             matrix_control_in(l)(WEIGHT_VALID_BIT) <= '0';
             matrix_control_in(l)(ACTIVATION_VALID_BIT) <= '0';
             matrix_control_in(l)(ENABLE_BIT) <= '0';
@@ -181,9 +183,11 @@ begin
                         activations_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '1';
                         activations_data_in(l) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(l,e),DATA_SIZE)); 
                     else
-                        activations_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
+                        activations_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '1';
                         activations_data_in(l) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX2(l,e-TEST_MATRIX_SIZE),DATA_SIZE));
                     end if;
+                else 
+                    activations_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
                 end if;
                 
             end loop; 
@@ -215,9 +219,9 @@ begin
 --        end loop; 
 
         for l in 0 to (CONTROL_LINES-1) loop
-            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '0';
-            matrix_control_in(l)(WEIGHT_INIT_BIT) <= '0';
-            matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
+            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '1';
+            matrix_control_in(l)(WEIGHT_INIT_BIT) <= '1';
+            matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '1';
             matrix_control_in(l)(WEIGHT_VALID_BIT) <= '0';
             matrix_control_in(l)(ACTIVATION_VALID_BIT) <= '0';
             matrix_control_in(l)(ENABLE_BIT) <= '0';
@@ -293,14 +297,22 @@ begin
             
         end loop; 
         
-        for i in 0 to (TEST_WEIGHT_SIZE*8) loop 
+        
+        for i in 0 to ((TEST_WEIGHT_SIZE+1)*(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1))-1 loop 
             wait until falling_edge(clk);  
         end loop;
         
         -- loading phase (second matrix) (unloading first results)
         
+        for l in 0 to (ACTIVATION_LINES-1) loop 
+            activations_control_bus(l)(BUFFER_INTERFACE_INIT_BIT) <= '0';
+            activations_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
+            activations_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '1';
+            activations_control_bus(l)(BUFFER_INTERFACE_SEND_SIZE_MSB downto BUFFER_INTERFACE_SEND_SIZE_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE,QUEUE_COUNTERS_SIZE));
+        end loop; 
+        
         for l in 0 to (CONTROL_LINES-1) loop
-            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '0';
+            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '1';
             matrix_control_in(l)(WEIGHT_INIT_BIT) <= '0';
             matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
             matrix_control_in(l)(WEIGHT_VALID_BIT) <= '0';
@@ -311,14 +323,6 @@ begin
             else 
                 matrix_control_in(l)(ENABLE_BIT) <= '0';
             end if;
-        end loop; 
-        
-        
-        for l in 0 to (ACTIVATION_LINES-1) loop 
-            activations_control_bus(l)(BUFFER_INTERFACE_INIT_BIT) <= '0';
-            activations_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
-            activations_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '1';
-            activations_control_bus(l)(BUFFER_INTERFACE_SEND_SIZE_MSB downto BUFFER_INTERFACE_SEND_SIZE_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE,QUEUE_COUNTERS_SIZE));
         end loop; 
 
         wait until falling_edge(clk); 
@@ -339,17 +343,10 @@ begin
 
         end loop; 
         
-        for i in 0 to TEST_MATRIX_SIZE-2 loop
+        for i in 0 to TEST_MATRIX_SIZE-1 loop
             wait until falling_edge(clk); 
         end loop;
-
-                
-        for l in 0 to (ACCUMULATION_LINES-1) loop 
-            outputs_control_bus(l)(BUFFER_INTERFACE_INIT_BIT) <= '0';
-            outputs_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
-            outputs_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '1';
-            outputs_control_bus(l)(BUFFER_INTERFACE_SEND_SIZE_MSB downto BUFFER_INTERFACE_SEND_SIZE_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,QUEUE_COUNTERS_SIZE));
-        end loop; 
+        
 
         for l in 0 to (CONTROL_LINES-1) loop
             matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '0';
@@ -361,15 +358,26 @@ begin
             matrix_control_in(l)(PROCESS_TYPE_BIT) <= '1';
         end loop; 
         
+        wait until rising_edge(outputs_status_bus(0)(ACCUMULATOR_VALID_BIT));
+        
+        for i in 0 to (DEPTH*4)-1 loop 
+            wait until falling_edge(clk);
+        end loop;
+        
+        for l in 0 to (ACCUMULATION_LINES-1) loop 
+            outputs_control_bus(l)(BUFFER_INTERFACE_INIT_BIT) <= '0';
+            outputs_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
+            outputs_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '1';
+            outputs_control_bus(l)(BUFFER_INTERFACE_SEND_SIZE_MSB downto BUFFER_INTERFACE_SEND_SIZE_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,QUEUE_COUNTERS_SIZE));
+        end loop; 
+        
         wait until falling_edge(clk); 
         
         for l in 0 to (ACCUMULATION_LINES-1) loop 
             outputs_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '0';
         end loop; 
-        
-        for i in 0 to ((DEPTH*5)-TEST_MATRIX_SIZE)-1 loop 
-            wait until falling_edge(clk);
-        end loop;
+
+        wait until falling_edge(clk);
 
         -- processing phase
         

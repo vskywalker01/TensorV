@@ -73,21 +73,25 @@ begin
                 weight_size <= (others => '0');
              
                 skip <= (others => '0');
+                current_skip <= UNSIGNED(skip_in);
                 
                 done_out <= '1';
                 empty_out <= '1';
            
-            elsif (init_activation = '1') then 
+            elsif (init_activation = '1' or init_weight = '1') then 
+                if (init_weight = '1') then
+                    skip <= UNSIGNED(skip_in);
+                    current_skip <= UNSIGNED(skip_in); 
+                    weight_size <= (others => '0');
+                else 
+                    current_skip <= skip;
+                end if; 
+                
                 activation_current_head <= (others => '0');
                 weight_current_head <= (others => '0');
                 activation_head <= (others => '0');
                 activation_tail <= (others => '0');
-            elsif(init_weight = '1') then     
-                skip <= UNSIGNED(skip_in);
-                current_skip <= UNSIGNED(skip_in);
-                weight_current_head <= (others => '0');
-                activation_current_head <= (others => '0');
-                weight_size <= (others => '0');
+                
             else                         
                 if (add_weight = '1' and weight_size < REGISTERS) then
                     weight_register_file(to_integer(weight_size(COUNTER_BITS-1 downto 0))) <= weight_in;

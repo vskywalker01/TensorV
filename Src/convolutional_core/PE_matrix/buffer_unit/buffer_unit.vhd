@@ -48,7 +48,7 @@ begin
             data_out => data_out
         );
 
-    buffer_pop <= '1' when ((counter > 0 and step_in = '1') or send_in = '1') else '0'; 
+    buffer_pop <= '1' when ((counter > 1 and step_in = '1') or send_in = '1') else '0'; 
     
     stage1: process(clk) is 
     begin 
@@ -62,7 +62,7 @@ begin
                     counter <= UNSIGNED(counter_in);
                     ready_out <= '0';
                     
-                elsif (counter>1 and buffer_empty = '0' and step_in = '1') then 
+                elsif (counter > 1 and buffer_empty = '0' and step_in = '1') then 
                     counter <= counter - 1;
                     ready_out <= '0';
                     

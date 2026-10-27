@@ -110,6 +110,8 @@ begin
                 activation_forward_out <= activation_forward_in;
                 accumulator_forward_out <= accumulator_forward_in;
                 control_forward_out <= control_forward_in;
+                
+                
                 status_forward_out <= status_forward_in;
             end if;
         end if; 
