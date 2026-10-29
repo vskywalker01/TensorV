@@ -2,10 +2,12 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL; 
 use work.PE_matrix_parameters.ALL;
 
+
 entity PE is 
     Port ( 
         clk:                    in STD_LOGIC;  
         reset:                  in STD_LOGIC;                 
+        enable:                 in STD_LOGIC; 
         
         control_in:             in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
         status_in:              in STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
@@ -22,13 +24,12 @@ entity PE is
     );
 end PE;
 
-
 architecture Behavioral of PE is
     component PE_stage1 is
         Port (
             clk:                        in STD_LOGIC;  
             reset:                      in STD_LOGIC;                 
-            
+            enable:                     in STD_LOGIC; 
             -- matrix forward lines
             
             control_forward_in:                 in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
@@ -65,6 +66,7 @@ architecture Behavioral of PE is
         Port ( 
             clk:                        in STD_LOGIC;  
             reset:                      in STD_LOGIC;     
+            enable:                     in STD_LOGIC;
                         
             -- matrix forward lines
             
@@ -107,6 +109,7 @@ architecture Behavioral of PE is
         Port ( 
             clk:                        in STD_LOGIC;  
             reset:                      in STD_LOGIC;     
+            enable:                     in STD_LOGIC; 
             
             -- matrix forward lines             
             
@@ -161,6 +164,7 @@ begin
         port map(
             clk => clk, 
             reset => reset, 
+            enable => enable,
             
             control_forward_in => control_in,
             status_forward_in => status_in,
@@ -188,6 +192,7 @@ begin
         port map(
             clk => clk, 
             reset => reset, 
+            enable => enable,
             
             control_forward_in => control_forward_12,
             status_forward_in => status_forward_12,
@@ -216,6 +221,7 @@ begin
         port map(
             clk => clk, 
             reset => reset,
+            enable => enable,
               
             control_forward_in => control_forward_23,
             weight_forward_in => weight_forward_23,
@@ -232,7 +238,7 @@ begin
             reduction_partial2_in => reduction_partial2, 
             reduction_valid_in => reduction_valid, 
             reduction_type_in => reduction_type,
-            
+           
             accumulator_loopback_out => accumulator_loopback,
             accumulator_loopback_valid_out => accumulator_loopback_valid
             

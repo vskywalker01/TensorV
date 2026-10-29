@@ -6,7 +6,7 @@ entity PE_stage2 is
     Port ( 
         clk:                        in STD_LOGIC;  
         reset:                      in STD_LOGIC;     
-                    
+        enable:                     in STD_LOGIC;
         -- matrix forward lines
         
         control_forward_in:                 in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
@@ -46,6 +46,7 @@ entity PE_stage2 is
     );
 end PE_stage2;
 
+
 architecture Behavioral of PE_stage2 is    
     component reduction_stage is
         Generic (
@@ -83,7 +84,9 @@ begin
                 control_forward_out <= (others => '0');
                 reduction_valid_out <= '0';
                 reduction_type_out <= '0';
-            else 
+                status_forward_out <= (others => '0');
+                
+            elsif (enable = '1') then
             
                 -- Matrix forward lines 
                 weight_forward_out <= weight_forward_in;
@@ -96,7 +99,7 @@ begin
                 -- if the PE is currently processing a row (not done yet), the reduction_partial lines will assume the result of the multiplication between 
                 -- a valid weight and a valid activation coming from the queues in the first stage
                 
-                if (control_forward_in(ENABLE_BIT)='1' and control_forward_in(PROCESS_TYPE_BIT) = '0' and row_done_in = '0' and queue_empty_in = '0') then 
+                if (control_forward_in(PROCESS_ENABLE_BIT)='1' and control_forward_in(PROCESS_TYPE_BIT) = '0' and row_done_in = '0' and queue_empty_in = '0' and status_forward_in(DONE_BIT)='0') then 
                     reduction_partial1_out <= mul_partial1;
                     reduction_partial2_out <= mul_partial2;
                     reduction_valid_out <= '1';
@@ -106,7 +109,7 @@ begin
                 -- the reduction_partial1 line will assume the accumulation from the queue and reduction_partial2 line will assume 0.
                 -- This is done only when there is a valid accumulator input (data available from past PE).
                 
-                elsif (control_forward_in(ENABLE_BIT) = '1' and control_forward_in(PROCESS_TYPE_BIT) = '1' and status_forward_in(ACCUMULATOR_VALID_BIT)= '1' and accumulator_empty_in = '0') then
+                elsif (control_forward_in(PROCESS_ENABLE_BIT) = '1' and control_forward_in(PROCESS_TYPE_BIT) = '1' and status_forward_in(ACCUMULATOR_VALID_BIT)= '1' and accumulator_empty_in = '0' and status_forward_in(DONE_BIT)='1') then
                     reduction_partial1_out <= accumulator_queue_in;
                     reduction_partial2_out <= (others => '0');
                     reduction_valid_out <= '1';           
@@ -114,7 +117,7 @@ begin
                     
                -- if the PE has processed a row, the accumulator will be pushed inside its queue in the third stage (the reduction is not valid)
  
-                elsif (control_forward_in(ENABLE_BIT)='1' and control_forward_in(PROCESS_TYPE_BIT) = '0' and row_done_in = '1') then 
+                elsif (control_forward_in(PROCESS_ENABLE_BIT)='1' and control_forward_in(PROCESS_TYPE_BIT) = '0' and row_done_in = '1' and status_forward_in(DONE_BIT)='0') then 
                     reduction_valid_out <= '0';
                     reduction_type_out <= '1';
  

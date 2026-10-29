@@ -30,7 +30,6 @@ end buffer_unit;
 architecture Behavioral of buffer_unit is
     signal counter: UNSIGNED(COUNTER_SIZE-1 downto 0);
     signal buffer_pop, buffer_empty: STD_LOGIC;
-    signal counter_empty: STD_LOGIC;
 begin
     buffer_queue: queue 
         generic map ( 

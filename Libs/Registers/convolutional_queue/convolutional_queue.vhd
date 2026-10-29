@@ -75,7 +75,7 @@ begin
                 skip <= (others => '0');
                 current_skip <= UNSIGNED(skip_in);
                 
-                done_out <= '1';
+                done_out <= '0';
                 empty_out <= '1';
            
             elsif (init_activation = '1' or init_weight = '1') then 

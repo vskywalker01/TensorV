@@ -8,6 +8,7 @@ entity PE_stage1 is
     Port (
         clk:                        in STD_LOGIC;  
         reset:                      in STD_LOGIC;                 
+        enable:                     in STD_LOGIC; 
         
         -- matrix forward lines
         
@@ -47,6 +48,8 @@ end PE_stage1;
 architecture Behavioral of PE_stage1 is
     signal move_data_queue, pop_accumulator_queue, row_done: STD_LOGIC;  
     signal data_queue_empty: STD_LOGIC;
+    signal accumulations_counter: UNSIGNED(QUEUE_COUNTERS_SIZE-1 downto 0);
+
 begin
 
     data_queue: convolutional_queue 
@@ -87,11 +90,10 @@ begin
         );
     
     -- The data queue moves data when ENABLE = 1, PROCESS_TYPE = 0 and there is not an incoming value from the past PE's accumulator lines
-    move_data_queue <= control_forward_in(ENABLE_BIT) and not(control_forward_in(PROCESS_TYPE_BIT));
+    move_data_queue <= '1' when (control_forward_in(PROCESS_ENABLE_BIT)='1' and control_forward_in(PROCESS_TYPE_BIT) = '0') else '0';
         
-    
     -- The accumulation queue pops data when ENABLE = 1 and PROCESS_TYPE = 1 and there is a valid value from the past PE's accumulator lines
-    pop_accumulator_queue <= control_forward_in(ENABLE_BIT) and control_forward_in(PROCESS_TYPE_BIT) and status_forward_in(ACCUMULATOR_VALID_BIT);
+    pop_accumulator_queue <= control_forward_in(PROCESS_ENABLE_BIT) and control_forward_in(PROCESS_TYPE_BIT) and status_forward_in(ACCUMULATOR_VALID_BIT);
     row_done_out <= row_done;
 
     
@@ -104,15 +106,28 @@ begin
                 activation_forward_out <= (others => '0');
                 accumulator_forward_out <= (others => '0');
                 control_forward_out <= (others => '0');
-            else 
-
+                accumulations_counter <= (others => '0');
+                status_forward_out <= (others => '0');
+                
+            elsif (enable = '1') then
+                if (control_forward_in(ACCUMULATOR_INIT_BIT) = '1') then 
+                    accumulations_counter <= UNSIGNED(control_forward_in(ACCUMULATIONS_NUMBER_MS_BIT downto ACCUMULATIONS_NUMBER_LS_BIT));
+                elsif (row_done = '1' and accumulations_counter > 0) then 
+                    accumulations_counter <= accumulations_counter -1;
+                end if;
+                
                 weight_forward_out <= weight_forward_in;
                 activation_forward_out <= activation_forward_in;
                 accumulator_forward_out <= accumulator_forward_in;
                 control_forward_out <= control_forward_in;
+       
+                status_forward_out(ACCUMULATOR_VALID_BIT) <= status_forward_in(ACCUMULATOR_VALID_BIT);
+                if (accumulations_counter = 0) then 
+                    status_forward_out(DONE_BIT) <= '1';
+                else 
+                    status_forward_out(DONE_BIT) <= '0';
+                end if; 
                 
-                
-                status_forward_out <= status_forward_in;
             end if;
         end if; 
     end process;
