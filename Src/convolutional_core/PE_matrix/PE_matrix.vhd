@@ -36,8 +36,10 @@ architecture Behavioral of PE_matrix is
     
     type PE_ENABLES_MATRIX is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of STD_LOGIC;
     signal enables_matrix:           PE_ENABLES_MATRIX;
+    signal forward_enables_matrix:   PE_ENABLES_MATRIX;
     signal activation_lines_enables: STD_LOGIC_VECTOR(ACTIVATION_LINES-1 downto 0);
     signal column_lines_enables:     STD_LOGIC_VECTOR(DEPTH-1 downto 0);
+    
     
     type ACCUMULATION_MULTIPLEXERS is array (ACCUMULATION_LINES-1 downto 0) of STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
     signal accumulation_buffer_valid_in: STD_LOGIC_VECTOR(ACCUMULATION_LINES-1 downto 0);
@@ -54,8 +56,9 @@ architecture Behavioral of PE_matrix is
             COUNTER_SIZE: INTEGER := 3
         );
         Port (         
-            clk:        in STD_LOGIC;
-            reset:      in STD_LOGIC;
+            clk:                in STD_LOGIC;
+            reset:              in STD_LOGIC;
+            enable:             in STD_LOGIC;
         
             init:       in STD_LOGIC;
             add_in:     in STD_LOGIC;
@@ -75,7 +78,8 @@ architecture Behavioral of PE_matrix is
         Port ( 
             clk:                    in STD_LOGIC;  
             reset:                  in STD_LOGIC;   
-            enable:                 in STD_LOGIC;              
+            enable:                 in STD_LOGIC; 
+            forward_enable:         in STD_LOGIC;              
             
             control_in:             in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
             status_in:              in STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
@@ -99,6 +103,7 @@ begin
                     clk => clk, 
                     reset => reset,       
                     enable => enables_matrix(r,c),
+                    forward_enable => forward_enables_matrix(r,c),
                     control_in => control_interconnect_ports_in(r,c),
                     control_out => control_interconnect_ports_out(r,c),
                     status_in => status_interconnect_ports_in(r,c),
@@ -115,6 +120,7 @@ begin
                 );
             
             enables_matrix(r,c) <= activation_lines_enables(r+c) and column_lines_enables(c);
+            forward_enables_matrix(r,c) <= activation_lines_enables(r+c) and column_lines_enables(c);
             done_bits(c)(r) <= status_interconnect_ports_out(r,c)(DONE_BIT);
             
             weight_routing: if (c+1<DEPTH) generate 
@@ -146,6 +152,7 @@ begin
             Port map (
                 clk => clk, 
                 reset => reset,
+                enable => '1',
                 init => matrix_control_bus(MATRIX_CONTROL_ACTIVATION_BUFFERS_INIT_BIT),
                 add_in => accumulation_buffer_valid_in(i),
                 
@@ -173,6 +180,7 @@ begin
             Port map (
                 clk => clk, 
                 reset => reset,
+                enable => column_lines_enables(i),
                 init => matrix_control_bus(MATRIX_CONTROL_WEIGHT_BUFFERS_INIT_BIT),
                 add_in =>  weights_control_buffer(i)(BUFFER_INTERFACE_ADD_BIT),
                 step_in =>  control_interconnect_ports_in(i,0)(WEIGHT_VALID_BIT),
@@ -199,6 +207,7 @@ begin
                 Port map (
                     clk => clk, 
                     reset => reset,
+                    enable => activation_lines_enables(i),
                     init => matrix_control_bus(MATRIX_CONTROL_ACTIVATION_BUFFERS_INIT_BIT),
                     add_in =>  activations_control_buffer(i)(BUFFER_INTERFACE_ADD_BIT),
                     step_in =>  control_interconnect_ports_in(ROW,COL)(ACTIVATION_VALID_BIT),
@@ -220,6 +229,7 @@ begin
                 Port map (
                     clk => clk, 
                     reset => reset,
+                    enable => activation_lines_enables(i),
                     init => matrix_control_bus(MATRIX_CONTROL_ACTIVATION_BUFFERS_INIT_BIT),
                     add_in =>  activations_control_buffer(i)(BUFFER_INTERFACE_ADD_BIT),
                     step_in =>  control_interconnect_ports_in(ROW,COL)(ACTIVATION_VALID_BIT),

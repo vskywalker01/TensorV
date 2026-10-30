@@ -39,9 +39,11 @@ package PE_MATRIX_PARAMETERS is
     -- Definition of status bus
     -- These line are used to communicate the internal state of the PE 
     
-    constant STATUS_SIZE:            INTEGER := 2;
+    constant STATUS_SIZE:            INTEGER := 4;
     constant ACCUMULATOR_VALID_BIT:  INTEGER := STATUS_SIZE-1;
-    constant DONE_BIT:               INTEGER := ACCUMULATOR_VALID_BIT-1;
+    constant ACTIVE_BIT:             INTEGER := ACCUMULATOR_VALID_BIT-1;
+    constant TYPE_BIT:               INTEGER := ACTIVE_BIT-1;
+    constant DONE_BIT:               INTEGER := TYPE_BIT-1;
     
     constant CONTROL_LINES:          INTEGER := DEPTH;
     constant ACTIVATION_LINES:       INTEGER := (DEPTH*2)-1; 

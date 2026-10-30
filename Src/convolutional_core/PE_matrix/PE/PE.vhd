@@ -8,6 +8,7 @@ entity PE is
         clk:                    in STD_LOGIC;  
         reset:                  in STD_LOGIC;                 
         enable:                 in STD_LOGIC; 
+        forward_enable:         in STD_LOGIC; 
         
         control_in:             in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
         status_in:              in STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
@@ -30,6 +31,8 @@ architecture Behavioral of PE is
             clk:                        in STD_LOGIC;  
             reset:                      in STD_LOGIC;                 
             enable:                     in STD_LOGIC; 
+            forward_enable:             in STD_LOGIC; 
+            
             -- matrix forward lines
             
             control_forward_in:                 in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
@@ -66,7 +69,6 @@ architecture Behavioral of PE is
         Port ( 
             clk:                        in STD_LOGIC;  
             reset:                      in STD_LOGIC;     
-            enable:                     in STD_LOGIC;
                         
             -- matrix forward lines
             
@@ -109,7 +111,6 @@ architecture Behavioral of PE is
         Port ( 
             clk:                        in STD_LOGIC;  
             reset:                      in STD_LOGIC;     
-            enable:                     in STD_LOGIC; 
             
             -- matrix forward lines             
             
@@ -165,6 +166,7 @@ begin
             clk => clk, 
             reset => reset, 
             enable => enable,
+            forward_enable => forward_enable,
             
             control_forward_in => control_in,
             status_forward_in => status_in,
@@ -192,8 +194,8 @@ begin
         port map(
             clk => clk, 
             reset => reset, 
-            enable => enable,
             
+           
             control_forward_in => control_forward_12,
             status_forward_in => status_forward_12,
             weight_forward_in => weight_forward_12,
@@ -221,7 +223,6 @@ begin
         port map(
             clk => clk, 
             reset => reset,
-            enable => enable,
               
             control_forward_in => control_forward_23,
             weight_forward_in => weight_forward_23,

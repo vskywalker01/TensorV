@@ -86,7 +86,6 @@ begin
             ( -4,  5,  6,  7,  8)
         );
         
-        
         constant TEST_WEIGHT: SAMPLE_MATRIX(0 to 2, 0 to 2) := (
             ( 12,  -5,   7),
             ( -3,   9, -11),
@@ -199,6 +198,8 @@ begin
         matrix_control_bus(MATRIX_CONTROL_SEND_OUTPUT_SIZE_MSB downto MATRIX_CONTROL_SEND_OUTPUT_SIZE_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,QUEUE_COUNTERS_SIZE));
         matrix_control_bus(MATRIX_CONTROL_ROW_SKIP_MSB downto MATRIX_CONTROL_ROW_SKIP_LSB) <= STD_LOGIC_VECTOR(to_unsigned(1,QUEUE_COUNTERS_SIZE));
         matrix_control_bus(MATRIX_CONTROL_ROW_RESULTS_MSB downto MATRIX_CONTROL_ROW_RESULTS_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,QUEUE_COUNTERS_SIZE));
+        
+        wait until falling_edge(clk);
         matrix_control_bus(MATRIX_CONTROL_SEND_ACTIVATION_BUFFERS_BIT) <= '1';
         matrix_control_bus(MATRIX_CONTROL_SEND_WEIGHT_BUFFERS_BIT) <= '1';
         matrix_control_bus(MATRIX_CONTROL_SEND_OUTPUT_BUFFERS_BIT) <= '0';

@@ -7,7 +7,6 @@ entity PE_stage3 is
     Port ( 
         clk:                        in STD_LOGIC;  
         reset:                      in STD_LOGIC;     
-        enable:                     in STD_LOGIC;
         
         -- matrix forward lines             
         
@@ -79,29 +78,25 @@ begin
     stage3: process(clk) is 
     begin 
         if (rising_edge(clk)) then 
-            if (reset = '1') then 
-                weight_forward_out <= (others => '0');
-                activation_forward_out <= (others => '0');
+            if (reset = '1' or status_forward_in(ACTIVE_BIT) = '0') then 
                 control_forward_out <= (others => '0');
                 accumulator_forward_out <= (others => '0');
                 status_forward_out(ACCUMULATOR_VALID_BIT) <= '1';
                 status_forward_out(DONE_BIT) <= '1';
+                status_forward_out(ACTIVE_BIT) <= '0';
                 -- the accumulator is initialized to 0
                 accumulator <= (others => '0');
                 
-            elsif (enable = '1') then
+            else
                 
-                -- if the PE is not enabled (is not used for processing rows and has not partial results inside), it will be used for 
-                -- forwarding the accumulation from the past PE to the next one. 
-                 
-                if (control_forward_in(PROCESS_ENABLE_BIT) = '0' and control_forward_in(PROCESS_TYPE_BIT)='1' and status_forward_in(ACCUMULATOR_VALID_BIT) = '1') then 
-                    accumulator_forward_out <= accumulator_forward_in; 
-                    accumulator_loopback_valid_out <= '0';
-                    status_forward_out(ACCUMULATOR_VALID_BIT) <= '1';
+                control_forward_out <= control_forward_in; 
+                status_forward_out(DONE_BIT) <= status_forward_in(DONE_BIT);
+                status_forward_out(ACTIVE_BIT) <= status_forward_in(ACTIVE_BIT);
+                status_forward_out(TYPE_BIT) <= status_forward_in(TYPE_BIT);
                 
                 -- if the PE is enabled and it is processing a row (reduction_valid = '1' and reduction_type = '1'), the accumulation result will be saved into the internal
                 -- accumulator 
-                elsif (control_forward_in(PROCESS_ENABLE_BIT) = '1' and control_forward_in(PROCESS_TYPE_BIT) = '0' and reduction_valid_in = '1' and reduction_type_in = '1') then 
+                if (status_forward_in(DONE_BIT)='0' and status_forward_in(TYPE_BIT) = '0' and reduction_valid_in = '1' and reduction_type_in = '1') then 
                     accumulator <= accumulation_stage_out; 
                     accumulator_loopback_valid_out <= '0';
                     status_forward_out(ACCUMULATOR_VALID_BIT) <= '0';
@@ -109,7 +104,7 @@ begin
                 -- if the PC is enabled and had processed a row (reduction_valid = '0' and reduction_type = '1'), the result will be forwarded in the internal loopback of the Pe and the 
                 -- internal accumulator will be initialized
                 
-                elsif (control_forward_in(PROCESS_ENABLE_BIT) = '1' and control_forward_in(PROCESS_TYPE_BIT) = '0' and reduction_valid_in = '0' and reduction_type_in = '1') then 
+                elsif (status_forward_in(DONE_BIT)='0' and status_forward_in(TYPE_BIT) = '0' and reduction_valid_in = '0' and reduction_type_in = '1') then 
                     accumulator <= (others => '0'); 
                     accumulator_loopback_valid_out <= '1';
                     accumulator_loopback_out <= accumulator; 
@@ -118,12 +113,12 @@ begin
                 -- if the PC is enabled and is performing an unloading phase, the past accumulation (from the accumulation queue) is summed with the value coming from the past PE.
                 -- the result will be then forwarded to the next PE.
                     
-                elsif (control_forward_in(PROCESS_ENABLE_BIT) = '1' and control_forward_in(PROCESS_TYPE_BIT) = '1' and reduction_valid_in = '1' and reduction_type_in = '0') then 
-                    accumulator <= (others => '0'); 
+                elsif (status_forward_in(DONE_BIT)='0' and status_forward_in(TYPE_BIT) = '1' and reduction_valid_in = '1' and reduction_type_in = '0') then 
+                    --accumulator <= (others => '0'); 
                     accumulator_loopback_valid_out <= '0';
                     accumulator_forward_out <= accumulation_stage_out;
                     status_forward_out(ACCUMULATOR_VALID_BIT) <= '1';
-                
+                   
                 else 
                     if (control_forward_in(ACCUMULATOR_INIT_BIT) = '1') then 
                         accumulator <= (others => '0'); 
@@ -133,17 +128,22 @@ begin
                     status_forward_out(ACCUMULATOR_VALID_BIT) <= '0';
                     accumulator_loopback_valid_out <= '0';
                 end if; 
-                
-                weight_forward_out <= weight_forward_in;
-                activation_forward_out <= activation_forward_in;
-                control_forward_out <= control_forward_in; 
-                status_forward_out(DONE_BIT) <= status_forward_in(DONE_BIT);
-            else 
-                accumulator_forward_out <= accumulation_stage_out;
-                status_forward_out(DONE_BIT) <= '1';
-                status_forward_out(ACCUMULATOR_VALID_BIT) <= '1';
+
             end if;
         end if; 
     end process;
+    
+    stage3_forward: process(clk) is 
+    begin 
+        if rising_edge(clk) then
+            if (reset = '1') then 
+                weight_forward_out <= (others => '0');
+                activation_forward_out <= (others => '0');
+            else 
+                weight_forward_out <= weight_forward_in;   
+                activation_forward_out <= activation_forward_in;
+            end if; 
+        end if;
+     end process;
 
 end Behavioral;

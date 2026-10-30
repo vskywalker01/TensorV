@@ -12,7 +12,8 @@ architecture behavioral of pe_test is
         Port ( 
             clk:                    in STD_LOGIC;  
             reset:                  in STD_LOGIC;        
-            enable:                 in STD_LOGIC;         
+            enable:                 in STD_LOGIC;      
+            forward_enable:         in STD_LOGIC;    
             
             control_in:             in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
             status_in:              in STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
@@ -28,7 +29,7 @@ architecture behavioral of pe_test is
         );
     end component;
     
-    signal clk, reset, enable: STD_LOGIC; 
+    signal clk, reset, enable, forward_enable: STD_LOGIC; 
     signal weight_in, weight_out, activation_in,activation_out: STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
     signal accumulator_in, accumulator_out: STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
     signal control_in, control_out: STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);
@@ -42,6 +43,7 @@ begin
             clk => clk,
             reset => reset,
             enable => enable,
+            forward_enable => forward_enable,
             
             weight_in => weight_in,
             activation_in => activation_in,
@@ -88,10 +90,30 @@ begin
         wait until falling_edge(clk); 
         
         enable <= '0';
+        forward_enable <= '0'; 
+        wait until falling_edge(clk);
+        forward_enable <= '1'; 
+        
+        for i in 0 to TEST_VECTOR_SIZE-1 loop
+    
+            if (i<TEST_WEIGHT_SIZE) then 
+                weight_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_WEIGHT(i),DATA_SIZE));
+                activation_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_VECTOR(i),DATA_SIZE));
+            else 
+                forward_enable <= '0';
+            end if; 
+            
+            
+            
+            wait until falling_edge(clk);   
+        end loop; 
+
+        
         -- initialization phase
         
         wait until falling_edge(clk);
         enable <= '1';
+        forward_enable <= '1';
         weight_in <= (others => '0');
         activation_in <= (others => '0');
         accumulator_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(accumulator,ACCUMULATOR_SIZE));
@@ -103,7 +125,7 @@ begin
         -- queue initialization
         control_in(ACTIVATION_INIT_BIT) <= '1';
         control_in(WEIGHT_INIT_BIT) <= '1';
-        control_in(ACCUMULATOR_INIT_BIT) <= '0';
+        control_in(ACCUMULATOR_INIT_BIT) <= '1';
         control_in(WEIGHT_VALID_BIT) <= '0';
         control_in(ACTIVATION_VALID_BIT) <= '0';
         control_in(PROCESS_ENABLE_BIT) <= '0';
@@ -118,9 +140,6 @@ begin
         control_in(WEIGHT_INIT_BIT) <= '0';
         control_in(ACCUMULATOR_INIT_BIT) <= '0';
         control_in(ACTIVATION_VALID_BIT) <= '1';
-        control_in(PROCESS_ENABLE_BIT) <= '0';
-        control_in(PROCESS_TYPE_BIT) <= '0';
-        status_in(ACCUMULATOR_VALID_BIT) <= '0';
         
         for i in 0 to TEST_VECTOR_SIZE-1 loop
         
@@ -139,44 +158,37 @@ begin
         end loop; 
         
         -- Execution phase
-        control_in(ACCUMULATIONS_NUMBER_MS_BIT downto ACCUMULATIONS_NUMBER_LS_BIT) <= STD_LOGIC_VECTOR(to_unsigned(3,QUEUE_COUNTERS_SIZE));
-        control_in(ACTIVATION_INIT_BIT) <= '0';
-        control_in(WEIGHT_INIT_BIT) <= '0';
-        control_in(ACCUMULATOR_INIT_BIT) <= '1';
+        
         control_in(ACTIVATION_VALID_BIT) <= '0';
+
+        control_in(ACCUMULATIONS_NUMBER_MS_BIT downto ACCUMULATIONS_NUMBER_LS_BIT) <= STD_LOGIC_VECTOR(to_unsigned(3,QUEUE_COUNTERS_SIZE));
+        control_in(PROCESS_ENABLE_BIT) <= '1';
+        control_in(PROCESS_TYPE_BIT) <= '0';
+        
+        wait until falling_edge(clk); 
+        
+        control_in(ACCUMULATIONS_NUMBER_MS_BIT downto ACCUMULATIONS_NUMBER_LS_BIT) <= (others => '0');
         control_in(PROCESS_ENABLE_BIT) <= '0';
         control_in(PROCESS_TYPE_BIT) <= '0';
-        status_in(ACCUMULATOR_VALID_BIT) <= '0';
         
         wait until falling_edge(clk);
-        control_in(ACCUMULATOR_INIT_BIT) <= '0';
-        control_in(ACCUMULATIONS_NUMBER_MS_BIT downto ACCUMULATIONS_NUMBER_LS_BIT) <= (others => '0');
-        control_in(PROCESS_ENABLE_BIT) <= '1';
+        wait until falling_edge(clk);
+        wait until falling_edge(clk);
+        wait until rising_edge(status_out(DONE_BIT));
+        wait until falling_edge(clk);
         
-        wait until (status_out(DONE_BIT) = '1'); 
-        wait until falling_edge(clk); 
+        for i in 0 to 10 loop 
+        
+            wait until falling_edge(clk); 
+        end loop;
+        
+        -- second loading phase
 
-        -- unloading phase + second loading phase
-        control_in(ACTIVATION_INIT_BIT) <= '1';
-        control_in(WEIGHT_INIT_BIT) <= '0';
-        control_in(ACCUMULATOR_INIT_BIT) <= '0';
-        control_in(ACTIVATION_VALID_BIT) <= '0';
-        control_in(WEIGHT_VALID_BIT) <= '0';
-        control_in(PROCESS_ENABLE_BIT) <= '1';
-        control_in(PROCESS_TYPE_BIT) <= '1';
-        status_in(ACCUMULATOR_VALID_BIT) <= '1';
         
         wait until falling_edge(clk);
         
-        control_in(ACTIVATION_INIT_BIT) <= '0';
-        control_in(WEIGHT_INIT_BIT) <= '0';
-        control_in(ACCUMULATOR_INIT_BIT) <= '0';
+        control_in(PROCESS_ENABLE_BIT) <= '0';
         control_in(ACTIVATION_VALID_BIT) <= '1';
-        control_in(WEIGHT_VALID_BIT) <= '0';
-        control_in(PROCESS_ENABLE_BIT) <= '1';
-        control_in(PROCESS_TYPE_BIT) <= '1';
-        status_in(ACCUMULATOR_VALID_BIT) <= '1';
-        
         for i in 0 to TEST_VECTOR_SIZE-1 loop
                 
                 -- The entire row is loaded in the activation queue
@@ -184,42 +196,41 @@ begin
                 
                 wait until falling_edge(clk);   
         end loop; 
-        
-        -- execution phase 
-        
         control_in(ACCUMULATIONS_NUMBER_MS_BIT downto ACCUMULATIONS_NUMBER_LS_BIT) <= STD_LOGIC_VECTOR(to_unsigned(3,QUEUE_COUNTERS_SIZE));
-        control_in(ACTIVATION_INIT_BIT) <= '0';
-        control_in(WEIGHT_INIT_BIT) <= '0';
-        control_in(ACCUMULATOR_INIT_BIT) <= '0';
         control_in(ACTIVATION_VALID_BIT) <= '0';
-        control_in(PROCESS_ENABLE_BIT) <= '0';
-        control_in(PROCESS_TYPE_BIT) <= '0';
-        status_in(ACCUMULATOR_VALID_BIT) <= '0';
-        
-        wait until falling_edge(clk);
-        control_in(ACCUMULATOR_INIT_BIT) <= '0';
-        control_in(ACCUMULATIONS_NUMBER_MS_BIT downto ACCUMULATIONS_NUMBER_LS_BIT) <= (others => '0');
         control_in(PROCESS_ENABLE_BIT) <= '1';
         
-        wait until (status_out(DONE_BIT) = '1'); 
         wait until falling_edge(clk); 
+        control_in(ACCUMULATIONS_NUMBER_MS_BIT downto ACCUMULATIONS_NUMBER_LS_BIT) <= (others => '0');
+        control_in(PROCESS_ENABLE_BIT) <= '0';
+        
+        wait until falling_edge(clk);
+        wait until falling_edge(clk);
+        wait until falling_edge(clk);
+        wait until rising_edge(status_out(DONE_BIT));
+        wait until falling_edge(clk);
+        
         
         -- unloading phase
         
-        control_in(ACTIVATION_INIT_BIT) <= '0';
-        control_in(WEIGHT_INIT_BIT) <= '0';
-        control_in(ACCUMULATOR_INIT_BIT) <= '0';
+        control_in(ACCUMULATIONS_NUMBER_MS_BIT downto ACCUMULATIONS_NUMBER_LS_BIT) <= STD_LOGIC_VECTOR(to_unsigned(3,QUEUE_COUNTERS_SIZE));
         control_in(ACTIVATION_VALID_BIT) <= '0';
         control_in(PROCESS_ENABLE_BIT) <= '1';
         control_in(PROCESS_TYPE_BIT) <= '1';
-        status_in(ACCUMULATOR_VALID_BIT) <= '1';
         
-        for i in 0 to (TEST_WEIGHT_SIZE*6) loop 
-            wait until falling_edge(clk);  
-        end loop;
-        
+        wait until falling_edge(clk);
+        control_in(ACCUMULATIONS_NUMBER_MS_BIT downto ACCUMULATIONS_NUMBER_LS_BIT) <= (others => '0');
         control_in(PROCESS_ENABLE_BIT) <= '0';
         control_in(PROCESS_TYPE_BIT) <= '0';
+        
+        wait until falling_edge(clk);
+        wait until falling_edge(clk);
+        
+        status_in(ACCUMULATOR_VALID_BIT) <= '1';
+        
+        wait until rising_edge(status_out(DONE_BIT));
+        
+        
         enable <= '0';
         
         wait;

@@ -14,7 +14,6 @@ entity queue is
         -- Control lines 
         clk: in STD_LOGIC;                                          -- clock 
         reset: in STD_LOGIC;                                        -- reset (when '1') 
-         
         
         init: in STD_LOGIC; 
         pop: in STD_LOGIC; 

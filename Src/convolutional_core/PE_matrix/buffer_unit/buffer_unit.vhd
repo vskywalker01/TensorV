@@ -11,6 +11,7 @@ entity buffer_unit is
     Port (         
         clk:        in STD_LOGIC;
         reset:      in STD_LOGIC;
+        enable:     in STD_LOGIC; 
     
         init:       in STD_LOGIC;
         add_in:     in STD_LOGIC;
@@ -47,7 +48,7 @@ begin
             data_out => data_out
         );
 
-    buffer_pop <= '1' when ((counter > 1 and step_in = '1') or send_in = '1') else '0'; 
+    buffer_pop <= '1' when (enable = '1' and ((counter > 1 and step_in = '1') or send_in = '1')) else '0'; 
     
     stage1: process(clk) is 
     begin 
@@ -56,15 +57,13 @@ begin
                 counter <= (others => '0');
                 ready_out <= '1';
                 valid_out <= '0';
-            else 
+            elsif(enable = '1') then
                 if (send_in = '1') then 
                     counter <= UNSIGNED(counter_in);
                     ready_out <= '0';
-                    
                 elsif (counter > 1 and buffer_empty = '0' and step_in = '1') then 
                     counter <= counter - 1;
                     ready_out <= '0';
-                    
                 else 
                     ready_out <= '1';
                 end if;               
