@@ -10,14 +10,14 @@ entity PE is
         enable:                 in STD_LOGIC; 
         forward_enable:         in STD_LOGIC; 
         
-        control_in:             in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
-        status_in:              in STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
+        control_in:             in PE_CONTROL_INTERFACE; 
+        status_in:              in PE_STATUS_INTERFACE;
         weight_in:              in STD_LOGIC_VECTOR( DATA_SIZE-1 downto 0); 
         activation_in:          in STD_LOGIC_VECTOR( DATA_SIZE-1 downto 0);
         accumulator_in:         in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0); 
         
-        control_out:            out STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);
-        status_out:             out STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
+        control_out:            out PE_CONTROL_INTERFACE;
+        status_out:             out PE_STATUS_INTERFACE;
         weight_out:             out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
         activation_out:         out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
         accumulator_out:        out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0)
@@ -35,15 +35,15 @@ architecture Behavioral of PE is
             
             -- matrix forward lines
             
-            control_forward_in:                 in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
+            control_forward_in:                 in PE_CONTROL_INTERFACE; 
             weight_forward_in:                  in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
-            status_forward_in:                  in STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
+            status_forward_in:                  in PE_STATUS_INTERFACE;
             activation_forward_in:              in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             accumulator_forward_in:             in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0); 
            
             
-            control_forward_out:                out STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);
-            status_forward_out:                 out STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
+            control_forward_out:                out PE_CONTROL_INTERFACE;
+            status_forward_out:                 out PE_STATUS_INTERFACE;
             weight_forward_out:                 out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
             activation_forward_out:             out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             accumulator_forward_out:            out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
@@ -72,14 +72,14 @@ architecture Behavioral of PE is
                         
             -- matrix forward lines
             
-            control_forward_in:                 in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
-            status_forward_in:                  in STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
+            control_forward_in:                 in PE_CONTROL_INTERFACE; 
+            status_forward_in:                  in PE_STATUS_INTERFACE;
             weight_forward_in:                  in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
             activation_forward_in:              in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             accumulator_forward_in:             in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0); 
             
-            control_forward_out:                out STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);   
-            status_forward_out:                 out STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);               
+            control_forward_out:                out PE_CONTROL_INTERFACE;   
+            status_forward_out:                 out PE_STATUS_INTERFACE;               
             weight_forward_out:                 out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             activation_forward_out:             out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             accumulator_forward_out:            out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
@@ -114,14 +114,14 @@ architecture Behavioral of PE is
             
             -- matrix forward lines             
             
-            control_forward_in:                 in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
-            status_forward_in:                  in STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
+            control_forward_in:                 in PE_CONTROL_INTERFACE; 
+            status_forward_in:                  in PE_STATUS_INTERFACE;
             accumulator_forward_in:             in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
             weight_forward_in:                  in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             activation_forward_in:              in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             
-            control_forward_out:                out STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);
-            status_forward_out:                 out STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
+            control_forward_out:                out PE_CONTROL_INTERFACE;
+            status_forward_out:                 out PE_STATUS_INTERFACE;
             weight_forward_out:                 out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             activation_forward_out:             out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             accumulator_forward_out:            out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
@@ -141,8 +141,8 @@ architecture Behavioral of PE is
     end component;
     
     -- forward signals
-    signal control_forward_12, control_forward_23:            STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);
-    signal status_forward_12, status_forward_23:              STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
+    signal control_forward_12, control_forward_23:            PE_CONTROL_INTERFACE;
+    signal status_forward_12, status_forward_23:              PE_STATUS_INTERFACE;
     signal weight_forward_12, weight_forward_23:              STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
     signal activation_forward_12, activation_forward_23:      STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
     signal accumulator_forward_12, accumulator_forward_23:    STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);

@@ -3,7 +3,6 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 use work.PE_MATRIX_PARAMETERS.ALL;
 
-
 entity PE_matrix is 
     Port ( 
         clk:                    in STD_LOGIC;  
@@ -12,22 +11,23 @@ entity PE_matrix is
         matrix_control_bus:              in MATRIX_CONTROL_INTERFACE;
         matrix_status_bus:               out MATRIX_STATUS_INTERFACE;
         
+        matrix_buffers_control_bus:       in MATRIX_BUFFERS_CONTROL_INTERFACE; 
+        matrix_buffers_status_bus:        out MATRIX_BUFFERS_STATUS_INTERFACE;
+        
         weights_data_in:                 in MATRIX_WEIGHTS_DATA_INTERFACE; 
-        weights_control_buffer:          in MATRIX_WEIGHTS_CONTROL_INTERFACE; 
-        
         activations_data_in:             in MATRIX_ACTIVATIONS_DATA_INTERFACE; 
-        activations_control_buffer:      in MATRIX_ACTIVATIONS_CONTROL_INTERFACE;
-        
         outputs_data_in:                 in MATRIX_OUTPUTS_DATA_INTERFACE; 
-        outputs_data_out:                out MATRIX_OUTPUTS_DATA_INTERFACE;
-        outputs_control_buffer:          in MATRIX_OUTPUTS_CONTROL_INTERFACE
-        
-        
+        outputs_data_out:                out MATRIX_OUTPUTS_DATA_INTERFACE
         
     );
 end PE_matrix;
 
 architecture Behavioral of PE_matrix is 
+    type MATRIX_INTERCONNECT_DATA is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+    type MATRIX_INTERCONNECT_ACCUMULATOR is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
+    type MATRIX_INTERCONNECT_CONTROL is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of PE_CONTROL_INTERFACE;
+    type MATRIX_INTERCONNECT_STATUS is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of PE_STATUS_INTERFACE;
+
     signal weight_interconnect_ports_in,weight_interconnect_ports_out: MATRIX_INTERCONNECT_DATA; 
     signal activation_interconnect_ports_in,activation_interconnect_ports_out: MATRIX_INTERCONNECT_DATA; 
     signal accumulator_interconnect_ports_in,accumulator_interconnect_ports_out: MATRIX_INTERCONNECT_ACCUMULATOR;
@@ -35,20 +35,21 @@ architecture Behavioral of PE_matrix is
     signal status_interconnect_ports_in, status_interconnect_ports_out: MATRIX_INTERCONNECT_STATUS;
     
     type PE_ENABLES_MATRIX is array (DEPTH-1 downto 0, DEPTH-1 downto 0) of STD_LOGIC;
-    signal enables_matrix:           PE_ENABLES_MATRIX;
-    signal forward_enables_matrix:   PE_ENABLES_MATRIX;
-    signal activation_lines_enables: STD_LOGIC_VECTOR(ACTIVATION_LINES-1 downto 0);
-    signal column_lines_enables:     STD_LOGIC_VECTOR(DEPTH-1 downto 0);
+    signal enables_matrix:                      PE_ENABLES_MATRIX;
+    signal forward_enables_matrix:              PE_ENABLES_MATRIX;
     
+    signal activation_forward_enable_lines:     STD_LOGIC_VECTOR(ACTIVATION_LINES-1 downto 0);
+    signal weight_enable_lines:                 STD_LOGIC_VECTOR(WEIGHT_LINES-1 downto 0); 
+    signal column_enable_lines:                 STD_LOGIC_VECTOR(DEPTH-1 downto 0);
     
     type ACCUMULATION_MULTIPLEXERS is array (ACCUMULATION_LINES-1 downto 0) of STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
     signal accumulation_buffer_valid_in: STD_LOGIC_VECTOR(ACCUMULATION_LINES-1 downto 0);
     signal accumulation_mux: ACCUMULATION_MULTIPLEXERS;
     
     type MATRIX_DONE_LINES is array (DEPTH-1 downto 0) of STD_LOGIC_VECTOR(ACCUMULATION_LINES-1 downto 0);
-    signal done_bits:  MATRIX_DONE_LINES;
+    signal ready_bits:  MATRIX_DONE_LINES;
     
-    signal done_lines: STD_LOGIC_VECTOR(DEPTH-1 downto 0);
+    signal ready_lines: STD_LOGIC_VECTOR(DEPTH-1 downto 0);
     
     component buffer_unit is
         Generic (
@@ -77,25 +78,25 @@ architecture Behavioral of PE_matrix is
     component PE is 
         Port ( 
             clk:                    in STD_LOGIC;  
-            reset:                  in STD_LOGIC;   
+            reset:                  in STD_LOGIC;                 
             enable:                 in STD_LOGIC; 
-            forward_enable:         in STD_LOGIC;              
+            forward_enable:         in STD_LOGIC; 
             
-            control_in:             in STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0); 
-            status_in:              in STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
+            control_in:             in PE_CONTROL_INTERFACE; 
+            status_in:              in PE_STATUS_INTERFACE;
             weight_in:              in STD_LOGIC_VECTOR( DATA_SIZE-1 downto 0); 
             activation_in:          in STD_LOGIC_VECTOR( DATA_SIZE-1 downto 0);
             accumulator_in:         in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0); 
             
-            control_out:            out STD_LOGIC_VECTOR(CONTROL_SIZE-1 downto 0);
-            status_out:             out STD_LOGIC_VECTOR(STATUS_SIZE-1 downto 0);
+            control_out:            out PE_CONTROL_INTERFACE;
+            status_out:             out PE_STATUS_INTERFACE;
             weight_out:             out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
             activation_out:         out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             accumulator_out:        out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0)
         );
     end component;
     
-begin 
+begin
     matrix_rows: for r in 0 to (DEPTH-1) generate 
         matrix_columns: for c in 0 to (DEPTH-1) generate
             pe_entity: PE 
@@ -119,9 +120,10 @@ begin
                     accumulator_out => accumulator_interconnect_ports_out(r,c)
                 );
             
-            enables_matrix(r,c) <= activation_lines_enables(r+c) and column_lines_enables(c);
-            forward_enables_matrix(r,c) <= activation_lines_enables(r+c) and column_lines_enables(c);
-            done_bits(c)(r) <= status_interconnect_ports_out(r,c)(DONE_BIT);
+            enables_matrix(r,c) <= weight_enable_lines(r) and column_enable_lines(c);
+            forward_enables_matrix(r,c) <= activation_forward_enable_lines(r+c) and column_enable_lines(c);
+            
+            ready_bits(c)(r) <= status_interconnect_ports_out(r,c)(PE_READY);
             
             weight_routing: if (c+1<DEPTH) generate 
                 weight_interconnect_ports_in(r,c+1) <= weight_interconnect_ports_out(r,c);
@@ -129,7 +131,7 @@ begin
             
             accumulators_routing: if (r>0) generate 
                 accumulator_interconnect_ports_in(r-1,c) <= accumulator_interconnect_ports_out(r,c);
-                status_interconnect_ports_in(r-1,c)(ACCUMULATOR_VALID_BIT)<= status_interconnect_ports_out(r,c)(ACCUMULATOR_VALID_BIT);
+                status_interconnect_ports_in(r-1,c)(PE_OUTPUT_VALID)<= status_interconnect_ports_out(r,c)(PE_OUTPUT_VALID);
             end generate; 
             
             activation_routing: if (r>0 and (c+1<DEPTH)) generate 
@@ -147,50 +149,49 @@ begin
         output_buffer: buffer_unit 
             Generic map (
                 DATA_SIZE => ACCUMULATOR_SIZE,
-                COUNTER_SIZE => BUFFER_COUNTERS_SIZE
+                COUNTER_SIZE => BUFFER_SIZE_BITS
             )
             Port map (
                 clk => clk, 
                 reset => reset,
                 enable => '1',
-                init => matrix_control_bus(MATRIX_CONTROL_ACTIVATION_BUFFERS_INIT_BIT),
+                init => matrix_buffers_control_bus(MATRIX_BUFFERS_OUTPUTS_INIT),
                 add_in => accumulation_buffer_valid_in(i),
                 
-                step_in =>  matrix_control_bus(MATRIX_CONTROL_SEND_OUTPUT_BUFFERS_BIT),
-                send_in =>  matrix_control_bus(MATRIX_CONTROL_ACTIVATION_BUFFERS_INIT_BIT),
-                counter_in(BUFFER_COUNTERS_SIZE-1 downto QUEUE_COUNTERS_SIZE) => (others => '0'),
-                counter_in(QUEUE_COUNTERS_SIZE-1 downto 0) => matrix_control_bus(MATRIX_CONTROL_SEND_OUTPUT_SIZE_MSB downto MATRIX_CONTROL_SEND_OUTPUT_SIZE_LSB),
+                step_in =>  '1',
+                send_in =>  matrix_control_bus(MATRIX_CONTROL_LOAD_OUTPUTS),
+                counter_in(BUFFER_SIZE_BITS-1 downto CONV_SHIFTS_BITS) => (others => '0'),
+                counter_in(CONV_SHIFTS_BITS-1 downto 0) => matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB),
                 data_in => accumulator_interconnect_ports_out(0,i),
                 data_out => outputs_data_out(i),
                 valid_out => open,
-                ready_out => matrix_status_bus(MATRIX_STATUS_OUTPUTS_READY_LSB+i)
+                ready_out => matrix_buffers_status_bus(MATRIX_BUFFERS_STATUS_OUTPUT_LINES_READY_LSB+i)
             );
         
         accumulator_interconnect_ports_in(DEPTH-1,i) <= (others => '0');
-        status_interconnect_ports_in(DEPTH-1,i)(ACCUMULATOR_VALID_BIT) <= '1';
-
+        status_interconnect_ports_in(DEPTH-1,i)(PE_OUTPUT_VALID) <= '1';
     end generate; 
     
     weight_interface_routing: for i in 0 to (WEIGHT_LINES-1) generate 
         weight_buffer: buffer_unit 
             Generic map (
                 DATA_SIZE => DATA_SIZE,
-                COUNTER_SIZE => BUFFER_COUNTERS_SIZE
+                COUNTER_SIZE => BUFFER_SIZE_BITS
             )
             Port map (
                 clk => clk, 
                 reset => reset,
-                enable => column_lines_enables(i),
-                init => matrix_control_bus(MATRIX_CONTROL_WEIGHT_BUFFERS_INIT_BIT),
-                add_in =>  weights_control_buffer(i)(BUFFER_INTERFACE_ADD_BIT),
-                step_in =>  control_interconnect_ports_in(i,0)(WEIGHT_VALID_BIT),
-                send_in =>  matrix_control_bus(MATRIX_CONTROL_SEND_WEIGHT_BUFFERS_BIT),
-                counter_in(BUFFER_COUNTERS_SIZE-1 downto QUEUE_COUNTERS_SIZE) => (others => '0'),
-                counter_in(QUEUE_COUNTERS_SIZE-1 downto 0) => matrix_control_bus(MATRIX_CONTROL_SEND_WEIGHT_SIZE_MSB downto MATRIX_CONTROL_SEND_WEIGHT_SIZE_LSB),
+                enable => weight_enable_lines(i),
+                init => matrix_buffers_control_bus(MATRIX_BUFFERS_WEIGHTS_INIT),
+                add_in => matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_WEIGHTS_LSB+i),
+                step_in =>  control_interconnect_ports_in(i,0)(PE_WEIGHT_VALID),
+                send_in =>  matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS),
+                counter_in(BUFFER_SIZE_BITS-1 downto WEIGHT_MATRIX_SIZE_BITS) => (others => '0'),
+                counter_in(WEIGHT_MATRIX_SIZE_BITS-1 downto 0) => matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_X_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_X_LSB),
                 data_in => weights_data_in(i),
                 data_out => weight_interconnect_ports_in(i,0),
-                valid_out => control_interconnect_ports_in(i,0)(WEIGHT_VALID_BIT),
-                ready_out => matrix_status_bus(MATRIX_STATUS_WEIGHTS_READY_LSB+i)
+                valid_out => control_interconnect_ports_in(i,0)(PE_WEIGHT_VALID),
+                ready_out => matrix_buffers_status_bus(MATRIX_BUFFERS_STATUS_WEIGHTS_READY_LSB+i)
             );
     end generate; 
     
@@ -202,107 +203,116 @@ begin
             activation_buffer: buffer_unit 
                 Generic map (
                     DATA_SIZE => DATA_SIZE,
-                    COUNTER_SIZE => BUFFER_COUNTERS_SIZE
+                    COUNTER_SIZE => BUFFER_SIZE_BITS
                 )
                 Port map (
                     clk => clk, 
                     reset => reset,
-                    enable => activation_lines_enables(i),
-                    init => matrix_control_bus(MATRIX_CONTROL_ACTIVATION_BUFFERS_INIT_BIT),
-                    add_in =>  activations_control_buffer(i)(BUFFER_INTERFACE_ADD_BIT),
-                    step_in =>  control_interconnect_ports_in(ROW,COL)(ACTIVATION_VALID_BIT),
-                    send_in =>  matrix_control_bus(MATRIX_CONTROL_SEND_ACTIVATION_BUFFERS_BIT),
-                    counter_in(BUFFER_COUNTERS_SIZE-1 downto QUEUE_COUNTERS_SIZE) => (others => '0'),
-                    counter_in(QUEUE_COUNTERS_SIZE-1 downto 0) => matrix_control_bus(MATRIX_CONTROL_SEND_ACTIVATION_SIZE_MSB downto MATRIX_CONTROL_SEND_ACTIVATION_SIZE_LSB),
+                    enable => activation_forward_enable_lines(i),
+                    init => matrix_buffers_control_bus(MATRIX_BUFFERS_ACTIVATIONS_INIT),
+                    add_in =>  matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_ACTIVATIONS_LSB+i),
+                    step_in =>  control_interconnect_ports_in(ROW,COL)(PE_ACTIVATION_VALID),
+                    send_in =>  matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS),
+                    --counter_in(BUFFER_SIZE_BITS-1 downto ACTIVATION_MATRIX_SIZE_BITS) => (others => '0'),
+                    counter_in(ACTIVATION_MATRIX_SIZE_BITS-1 downto 0) => matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_X_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_X_LSB),
                     data_in => activations_data_in(i),
                     data_out => activation_interconnect_ports_in(ROW,COL),
-                    valid_out => control_interconnect_ports_in(i,0)(ACTIVATION_VALID_BIT),
-                    ready_out => matrix_status_bus(MATRIX_STATUS_ACTIVATIONS_READY_LSB+i)
+                    valid_out => control_interconnect_ports_in(i,0)(PE_ACTIVATION_VALID),
+                    ready_out => matrix_buffers_status_bus(MATRIX_BUFFERS_STATUS_ACTIVATIONS_READY_LSB+i)
                 );
         end generate; 
         last_rows: if (i>=DEPTH) generate
             activation_buffer: buffer_unit 
                 Generic map (
                     DATA_SIZE => DATA_SIZE,
-                    COUNTER_SIZE => BUFFER_COUNTERS_SIZE
+                    COUNTER_SIZE => BUFFER_SIZE_BITS
                 )
                 Port map (
                     clk => clk, 
                     reset => reset,
-                    enable => activation_lines_enables(i),
-                    init => matrix_control_bus(MATRIX_CONTROL_ACTIVATION_BUFFERS_INIT_BIT),
-                    add_in =>  activations_control_buffer(i)(BUFFER_INTERFACE_ADD_BIT),
-                    step_in =>  control_interconnect_ports_in(ROW,COL)(ACTIVATION_VALID_BIT),
-                    send_in =>  matrix_control_bus(MATRIX_CONTROL_SEND_ACTIVATION_BUFFERS_BIT),
-                    counter_in(BUFFER_COUNTERS_SIZE-1 downto QUEUE_COUNTERS_SIZE) => (others => '0'),
-                    counter_in(QUEUE_COUNTERS_SIZE-1 downto 0) => matrix_control_bus(MATRIX_CONTROL_SEND_ACTIVATION_SIZE_MSB downto MATRIX_CONTROL_SEND_ACTIVATION_SIZE_LSB),
+                    enable => activation_forward_enable_lines(i),
+                    init => matrix_buffers_control_bus(MATRIX_BUFFERS_ACTIVATIONS_INIT),
+                    add_in =>  matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_ACTIVATIONS_LSB+i),
+                    step_in =>  control_interconnect_ports_in(ROW,COL)(PE_ACTIVATION_VALID),
+                    send_in =>  matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS),
+                    --counter_in(BUFFER_SIZE_BITS-1 downto ACTIVATION_MATRIX_SIZE_BITS) => (others => '0'),
+                    counter_in(ACTIVATION_MATRIX_SIZE_BITS-1 downto 0) => matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_X_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_X_LSB),
                     data_in => activations_data_in(i),
                     data_out => activation_interconnect_ports_in(ROW,COL),
                     valid_out => open,
-                    ready_out => matrix_status_bus(MATRIX_STATUS_ACTIVATIONS_READY_LSB+i)
+                    ready_out => matrix_buffers_status_bus(MATRIX_BUFFERS_STATUS_ACTIVATIONS_READY_LSB+i)
                 );
         end generate; 
 
     end generate; 
     
     control_interface_routing: for i in 0 to (CONTROL_LINES-1) generate 
-        control_interconnect_ports_in(i,0)(ACTIVATION_SKIP_MS_BIT downto ACTIVATION_SKIP_LS_BIT) <= matrix_control_bus(MATRIX_CONTROL_ROW_SKIP_MSB downto MATRIX_CONTROL_ROW_SKIP_LSB);      
-        control_interconnect_ports_in(i,0)(ACCUMULATIONS_NUMBER_MS_BIT downto ACCUMULATIONS_NUMBER_LS_BIT) <= matrix_control_bus(MATRIX_CONTROL_ROW_RESULTS_MSB downto MATRIX_CONTROL_ROW_RESULTS_LSB); 
-        control_interconnect_ports_in(i,0)(ACTIVATION_INIT_BIT) <= matrix_control_bus(MATRIX_CONTROL_SEND_ACTIVATION_BUFFERS_BIT);
-        control_interconnect_ports_in(i,0)(WEIGHT_INIT_BIT) <= matrix_control_bus(MATRIX_CONTROL_SEND_WEIGHT_BUFFERS_BIT);
-        control_interconnect_ports_in(i,0)(ACCUMULATOR_INIT_BIT) <= matrix_control_bus(MATRIX_CONTROL_SEND_OUTPUT_BUFFERS_BIT);
-        control_interconnect_ports_in(i,0)(PROCESS_ENABLE_BIT) <= matrix_control_bus(MATRIX_CONTROL_PROCESS_ENABLE_BIT);
-        control_interconnect_ports_in(i,0)(PROCESS_TYPE_BIT) <= matrix_control_bus(MATRIX_CONTROL_PROCESS_TYPE_BIT);
+        control_interconnect_ports_in(i,0)(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB) <= matrix_control_bus(MATRIX_CONTROL_CONV_SKIP_X_MSB downto MATRIX_CONTROL_CONV_SKIP_X_LSB);      
+        control_interconnect_ports_in(i,0)(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB) <= matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB); 
+        control_interconnect_ports_in(i,0)(PE_ACTIVATION_INIT) <= matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS);
+        control_interconnect_ports_in(i,0)(PE_WEIGHT_INIT) <= matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS);
+        control_interconnect_ports_in(i,0)(PE_ACCUMULATOR_INIT) <= matrix_control_bus(MATRIX_CONTROL_LOAD_OUTPUTS);
+        control_interconnect_ports_in(i,0)(PE_PROCESS_START) <= matrix_control_bus(MATRIX_CONTROL_PROCESS_START);
+        control_interconnect_ports_in(i,0)(PE_PROCESS_TYPE) <= matrix_control_bus(MATRIX_CONTROL_PROCESS_TYPE);
     end generate; 
+    
     
     enable_process: process(clk)
     begin
         if (rising_edge(clk)) then 
             if (reset = '1') then
-                activation_lines_enables <= (others => '0'); 
-                column_lines_enables <= (others => '0');
+                activation_forward_enable_lines <= (others => '0');
+                weight_enable_lines <= (others => '0'); 
+                column_enable_lines <= (others => '0');
     
             else 
                 for r in 0 to DEPTH-1 loop 
-                    if (r<UNSIGNED(matrix_control_bus(MATRIX_CONTROL_ROWS_ENABLE_MSB downto MATRIX_CONTROL_ROWS_ENABLE_LSB))) then 
-                        activation_lines_enables(r) <= '1'; 
+                    if (r<UNSIGNED(matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_Y_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_Y_LSB))) then 
+                        activation_forward_enable_lines(r) <= '1'; 
                     else 
-                        activation_lines_enables(r) <= '0'; 
+                        activation_forward_enable_lines(r) <= '0'; 
                     end if; 
                 end loop;
                     
-                for c in 0 to DEPTH-1 loop
-                    if (c<UNSIGNED(matrix_control_bus(MATRIX_CONTROL_COLS_ENABLE_MSB downto MATRIX_CONTROL_COLS_ENABLE_LSB))) then 
-                        column_lines_enables(c) <= '1'; 
+                for w in 0 to DEPTH-1 loop
+                    if (w<UNSIGNED(matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_Y_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_Y_LSB))) then 
+                        weight_enable_lines(w) <= '1'; 
                     else 
-                        column_lines_enables(c) <= '0'; 
+                        weight_enable_lines(w) <= '0'; 
                     end if; 
                 end loop;
                 
+                for c in 0 to DEPTH-1 loop
+                    if (c<UNSIGNED(matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB))) then 
+                        column_enable_lines(c) <= '1'; 
+                    else 
+                        column_enable_lines(c) <= '0'; 
+                    end if; 
+                end loop;
                 
             end if;  
         end if;
     end process;
     
-    matrix_status_bus(MATRIX_STATUS_DONE_MSB downto MATRIX_STATUS_DONE_LSB) <= done_lines;
+    matrix_status_bus(MATRIX_STATUS_LINES_READY_MSB downto MATRIX_STATUS_LINES_READY_LSB) <= ready_lines;
     
     ready_process: process(clk)
-        variable done: STD_LOGIC;
+        variable ready: STD_LOGIC;
     begin 
         if (rising_edge(clk)) then 
             if (reset = '1') then
-                done_lines <= (others => '0');
+                ready_lines <= (others => '0');
             else 
                 for l in 0 to DEPTH-1 loop 
-                    done := '1';
+                    ready := '1';
                     for i in 0 to DEPTH-1 loop
-                        done := done and done_bits(l)(i);
+                        ready := ready and ready_bits(l)(i);
                     end loop;
                     
-                    if (done = '1') then 
-                        done_lines(l) <= '1';
+                    if (ready = '1') then 
+                        ready_lines(l) <= '1';
                     else 
-                        done_lines(l) <= '0';
+                        ready_lines(l) <= '0';
                     end if;
                 end loop;
 

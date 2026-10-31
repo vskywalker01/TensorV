@@ -7,9 +7,12 @@ use IEEE.math_real.ALL;
 
 entity convolutional_queue is 
     Generic (
-        DATA_SIZE:      INTEGER := 8;
-        COUNTER_BITS:   INTEGER := 3
+        DATA_SIZE:                      INTEGER := 8;
+        WEIGHT_QUEUE_SIZE_BITS:         INTEGER := 3;
+        ACTIVATION_QUEUE_SIZE_BITS:     INTEGER := 3;
+        CONV_SKIP_BITS:                 INTEGER := 3                  
     );
+    
     Port (
         -- Control lines 
         clk: in STD_LOGIC;                                          -- clock 
@@ -30,32 +33,36 @@ entity convolutional_queue is
         weight_in:             in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
         weight_out:            out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
         
-        skip_in:         in STD_LOGIC_VECTOR(COUNTER_BITS-1 downto 0);
+        skip_in:               in STD_LOGIC_VECTOR(CONV_SKIP_BITS-1 downto 0);
         
-        empty_out:           out STD_LOGIC;         
-        done_out:            out STD_LOGIC 
+        empty_out:              out STD_LOGIC;         
+        done_out:               out STD_LOGIC 
     );
 end  convolutional_queue;
 
 architecture Behavioral of convolutional_queue is
-    constant REGISTERS: INTEGER := 2 ** COUNTER_BITS; 
-    type REGISTER_ARRAY         is array (REGISTERS-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+    constant WEIGHT_REGISTERS:      INTEGER := 2 ** WEIGHT_QUEUE_SIZE_BITS; 
+    constant ACTIVATION_REGISTERS:  INTEGER := 2 ** ACTIVATION_QUEUE_SIZE_BITS;
+    
+    type WEIGHT_REGISTER_ARRAY         is array (WEIGHT_REGISTERS-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+    type ACTIVATION_REGISTER_ARRAY     is array (ACTIVATION_REGISTERS-1 downto 0) of STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
     
     -- The registers are defined as an array of vectors;
-    signal activation_register_file, weight_register_file: REGISTER_ARRAY; 
+    signal activation_register_file:      ACTIVATION_REGISTER_ARRAY; 
+    signal weight_register_file:          WEIGHT_REGISTER_ARRAY;
     
-    signal activation_head, activation_current_head:            UNSIGNED(COUNTER_BITS downto 0);
-    signal activation_tail:                                     UNSIGNED(COUNTER_BITS downto 0);
-    signal weight_size, weight_current_head:                    UNSIGNED(COUNTER_BITS downto 0);
-    signal skip, current_skip:                                  UNSIGNED(COUNTER_BITS-1 downto 0); 
+    signal activation_head, activation_current_head:            UNSIGNED(ACTIVATION_QUEUE_SIZE_BITS downto 0);
+    signal activation_tail:                                     UNSIGNED(ACTIVATION_QUEUE_SIZE_BITS downto 0);
+    signal weight_size, weight_current_head:                    UNSIGNED(WEIGHT_QUEUE_SIZE_BITS downto 0);
+    signal skip, current_skip:                                  UNSIGNED(CONV_SKIP_BITS-1 downto 0); 
     
     signal activation_full, activation_empty: STD_LOGIC; 
     signal activation_waiting: STD_LOGIC; 
     
 begin     
-    activation_full <= '1' when (activation_head(COUNTER_BITS-1 downto 0) = activation_tail(COUNTER_BITS-1 downto 0) and not(activation_head(COUNTER_BITS) = activation_tail(COUNTER_BITS))) else '0';
-    activation_empty <= '1' when (activation_head(COUNTER_BITS-1 downto 0) = activation_tail(COUNTER_BITS-1 downto 0) and activation_head(COUNTER_BITS) = activation_tail(COUNTER_BITS)) else '0';
-    activation_waiting <= '1' when (activation_current_head(COUNTER_BITS-1 downto 0) = activation_tail(COUNTER_BITS-1 downto 0) and activation_current_head(COUNTER_BITS) = activation_tail(COUNTER_BITS)) else '0';
+    activation_full <= '1' when (activation_head(ACTIVATION_QUEUE_SIZE_BITS-1 downto 0) = activation_tail(ACTIVATION_QUEUE_SIZE_BITS-1 downto 0) and not(activation_head(ACTIVATION_QUEUE_SIZE_BITS) = activation_tail(ACTIVATION_QUEUE_SIZE_BITS))) else '0';
+    activation_empty <= '1' when (activation_head(ACTIVATION_QUEUE_SIZE_BITS-1 downto 0) = activation_tail(ACTIVATION_QUEUE_SIZE_BITS-1 downto 0) and activation_head(ACTIVATION_QUEUE_SIZE_BITS) = activation_tail(ACTIVATION_QUEUE_SIZE_BITS)) else '0';
+    activation_waiting <= '1' when (activation_current_head(ACTIVATION_QUEUE_SIZE_BITS-1 downto 0) = activation_tail(ACTIVATION_QUEUE_SIZE_BITS-1 downto 0) and activation_current_head(ACTIVATION_QUEUE_SIZE_BITS) = activation_tail(ACTIVATION_QUEUE_SIZE_BITS)) else '0';
     
     queue: process (clk) 
         variable index: INTEGER; 
@@ -93,13 +100,13 @@ begin
                 activation_tail <= (others => '0');
                 
             else                         
-                if (add_weight = '1' and weight_size < REGISTERS) then
-                    weight_register_file(to_integer(weight_size(COUNTER_BITS-1 downto 0))) <= weight_in;
+                if (add_weight = '1' and weight_size < WEIGHT_REGISTERS) then
+                    weight_register_file(to_integer(weight_size(WEIGHT_QUEUE_SIZE_BITS-1 downto 0))) <= weight_in;
                     weight_size <= weight_size +1;
                 end if;
                 
                 if (add_activation = '1' and activation_full = '0') then
-                    activation_register_file(to_integer(activation_tail(COUNTER_BITS-1 downto 0))) <= activation_in;
+                    activation_register_file(to_integer(activation_tail(ACTIVATION_QUEUE_SIZE_BITS-1 downto 0))) <= activation_in;
                     activation_tail <= activation_tail + 1;
                 end if;
                 
@@ -111,15 +118,15 @@ begin
                         activation_current_head <= activation_head + 1;
                         weight_current_head <= weight_current_head + 1;
                         
-                        activation_out <= activation_register_file(to_integer(activation_head(COUNTER_BITS-1 downto 0)));
-                        weight_out <= weight_register_file(to_integer(weight_current_head(COUNTER_BITS-1 downto 0)));
+                        activation_out <= activation_register_file(to_integer(activation_head(ACTIVATION_QUEUE_SIZE_BITS-1 downto 0)));
+                        weight_out <= weight_register_file(to_integer(weight_current_head(WEIGHT_QUEUE_SIZE_BITS-1 downto 0)));
                         done_out <= '0';
 
                     elsif (current_skip = 0 and weight_current_head < weight_size and activation_waiting = '0') then 
                         activation_current_head <= activation_current_head+1 ;
                         weight_current_head <= weight_current_head + 1;
-                        activation_out <= activation_register_file(to_integer(activation_current_head(COUNTER_BITS-1 downto 0)));
-                        weight_out <= weight_register_file(to_integer(weight_current_head(COUNTER_BITS-1 downto 0)));
+                        activation_out <= activation_register_file(to_integer(activation_current_head(ACTIVATION_QUEUE_SIZE_BITS-1 downto 0)));
+                        weight_out <= weight_register_file(to_integer(weight_current_head(WEIGHT_QUEUE_SIZE_BITS-1 downto 0)));
                         done_out <= '0';
                         
                     elsif (weight_current_head = weight_size) then

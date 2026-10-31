@@ -11,17 +11,19 @@ use IEEE.math_real.ALL;
 package REGISTERS is
     component convolutional_queue is 
         Generic (
-            DATA_SIZE:      INTEGER := 8;
-            COUNTER_BITS:   INTEGER := 3
+            DATA_SIZE:                      INTEGER := 8;
+            WEIGHT_QUEUE_SIZE_BITS:         INTEGER := 3;
+            ACTIVATION_QUEUE_SIZE_BITS:     INTEGER := 3;
+            CONV_SKIP_BITS:                 INTEGER := 3                  
         );
         Port (
             -- Control lines 
             clk: in STD_LOGIC;                                          -- clock 
             reset: in STD_LOGIC;                                        -- reset (when '1') 
-                    
+            
             init_activation: in STD_LOGIC;
             init_weight:    in STD_LOGIC;
-    
+        
             add_weight: in STD_LOGIC;
             add_activation: in STD_LOGIC;
             
@@ -34,10 +36,10 @@ package REGISTERS is
             weight_in:             in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             weight_out:            out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             
-            skip_in:         in STD_LOGIC_VECTOR(COUNTER_BITS-1 downto 0);
+            skip_in:               in STD_LOGIC_VECTOR(CONV_SKIP_BITS-1 downto 0);
             
-            empty_out:           out STD_LOGIC;         
-            done_out:            out STD_LOGIC 
+            empty_out:              out STD_LOGIC;         
+            done_out:               out STD_LOGIC 
         );
     end component;
     
@@ -58,7 +60,7 @@ package REGISTERS is
     
             
             -- Data lines
-            data_in:         in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);           -- input port
+            data_in:         in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);            -- input port
             data_out:        out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);           -- output port
             
             empty_out:           out STD_LOGIC
