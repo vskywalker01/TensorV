@@ -125,6 +125,7 @@ begin
         matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS) <= '0';
         matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS) <= '0';
         matrix_control_bus(MATRIX_CONTROL_LOAD_OUTPUTS) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS) <= '0';
         matrix_control_bus(MATRIX_CONTROL_PROCESS_START) <= '0';
         matrix_control_bus(MATRIX_CONTROL_PROCESS_TYPE) <= '0';
         
@@ -138,11 +139,12 @@ begin
         matrix_buffers_control_bus(MATRIX_BUFFERS_ACTIVATIONS_INIT) <= '0';
         matrix_buffers_control_bus(MATRIX_BUFFERS_WEIGHTS_INIT) <= '0';
         matrix_buffers_control_bus(MATRIX_BUFFERS_OUTPUTS_INIT) <= '0';
-        
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS) <= '1';
  
         wait until falling_edge(clk); 
         
-        
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS) <= '0';        
+       
         
         -- loading phase (two matrices in the activation buffers)
         

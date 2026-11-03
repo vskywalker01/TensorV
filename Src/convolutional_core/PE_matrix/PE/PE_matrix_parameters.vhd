@@ -30,7 +30,7 @@ package PE_MATRIX_PARAMETERS is
     
     -- Dimension of the convolutional core buffers    
     constant BUFFER_SIZE: INTEGER := 16; 
-    constant BUFFER_SIZE_BITS: INTEGER := get_register_address_size(BUFFER_SIZE);
+    constant BUFFER_SIZE_BITS: INTEGER := INTEGER(ceil(log2(REAL(BUFFER_SIZE))));
     
     -- Definition of PE control lines (used to control a single PE)
     
@@ -82,7 +82,8 @@ package PE_MATRIX_PARAMETERS is
     
     constant MATRIX_CONTROL_PROCESS_START:                  INTEGER := 0; 
     constant MATRIX_CONTROL_PROCESS_TYPE:                   INTEGER := MATRIX_CONTROL_PROCESS_START+1;
-    constant MATRIX_CONTROL_LOAD_WEIGHTS:                   INTEGER := MATRIX_CONTROL_PROCESS_TYPE+1;
+    constant MATRIX_CONTROL_CLEAR_ACTIVATIONS:              INTEGER := MATRIX_CONTROL_PROCESS_TYPE+1;
+    constant MATRIX_CONTROL_LOAD_WEIGHTS:                   INTEGER := MATRIX_CONTROL_CLEAR_ACTIVATIONS+1;
     constant MATRIX_CONTROL_LOAD_ACTIVATIONS:               INTEGER := MATRIX_CONTROL_LOAD_WEIGHTS+1;
     constant MATRIX_CONTROL_LOAD_OUTPUTS:                   INTEGER := MATRIX_CONTROL_LOAD_ACTIVATIONS+1;
     

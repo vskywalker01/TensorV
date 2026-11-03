@@ -111,7 +111,16 @@ begin
         if (rising_edge(clk)) then 
             
             -- if PE_INIT = '1', all the internal registers are initialized 
-            if (reset = '1' or (enable = '1' and control_forward_in(PE_INIT) = '1')) then 
+            if (reset = '1' or enable = '0' or (enable = '1' and control_forward_in(PE_INIT) = '1')) then 
+
+                accumulator_forward_out <= (others => '0');
+
+                -- if the PE is not active, the output status will consider always a valid output value (for the next accumulations)
+                status_forward_out(PE_ACTIVE) <= '0';
+                status_forward_out(PE_OUTPUT_VALID) <= '1';
+                status_forward_out(PE_READY) <= '1';
+                status_forward_out(PE_STATUS_TYPE) <= '0';
+                status_forward_out(PE_STATUS_WAITING) <= '0';
 
                 current_activation_head <= (others => '0');
                 activation_head <= (others => '0');
@@ -131,12 +140,12 @@ begin
 
             
             -- if PE_ACTIVATION_CLEAR = '1' only the activation queue is initialized
-            elsif (enable = '1' and control_forward_in(PE_ACTIVATIONS_CLEAR)='1') then 
+            elsif (control_forward_in(PE_ACTIVATIONS_CLEAR)='1') then 
                 current_activation_head <= (others => '0');
                 activation_head <= (others => '0');
                 activation_tail <= (others => '0');
                 
-            elsif (enable = '1') then
+            else
             
                 -- if there is an output coming from the stage 3 and the output queue is not full,the new element is inserted in the register file.
                 if (accumulator_loopback_valid_in = '1' and output_full <= '0') then 

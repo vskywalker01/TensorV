@@ -9,76 +9,29 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.math_real.ALL;
 
 package REGISTERS is
-
-    component convolutional_queue is 
+    component buffer_unit is
         Generic (
-            DATA_SIZE:                      INTEGER := 8;
-            WEIGHT_QUEUE_SIZE_BITS:         INTEGER := 3;
-            ACTIVATION_QUEUE_SIZE_BITS:     INTEGER := 3;
-            CONV_SKIP_BITS:                 INTEGER := 3                  
+            DATA_SIZE: INTEGER := 8;
+            BUFFER_SIZE_BITS: INTEGER := 3
         );
-        Port (
-            -- Control lines 
-            clk: in STD_LOGIC;                                          -- clock 
-            reset: in STD_LOGIC;                                        -- reset (when '1') 
-            
-            init:           in STD_LOGIC;
-            restart:        in STD_LOGIC;
+        Port (         
+            clk:        in STD_LOGIC;
+            reset:      in STD_LOGIC;
+            enable:     in STD_LOGIC; 
         
-            add_weight:     in STD_LOGIC;
-            add_activation: in STD_LOGIC;
+            init:       in STD_LOGIC;
+            add_in:     in STD_LOGIC;
             
-            move:           in STD_LOGIC; 
-                    
-            -- Data lines
-            activation_in:         in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);           -- input port
-            activation_out:        out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);          -- output port
-            
-            weight_in:             in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-            weight_out:            out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-            
-            skip_in:               in STD_LOGIC_VECTOR(CONV_SKIP_BITS-1 downto 0);
-            
-            empty_out:              out STD_LOGIC;         
-            done_out:               out STD_LOGIC 
-        );
-    end component;
-    
-    component queue is 
-        Generic (
-            DATA_SIZE:      INTEGER := 8;
-            COUNTER_BITS:   INTEGER := 3
-        );
-        Port (
-            -- Control lines 
-            clk: in STD_LOGIC;                                          -- clock 
-            reset: in STD_LOGIC;                                        -- reset (when '1') 
+            step_in:    in STD_LOGIC;
+            send_in:    in STD_LOGIC;
+            counter_in: in STD_LOGIC_VECTOR(BUFFER_SIZE_BITS-1 downto 0);
+            data_in:    in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
              
-            
-            init: in STD_LOGIC; 
-            pop: in STD_LOGIC; 
-            push: in STD_LOGIC;
+            data_out:   out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+            valid_out:  out STD_LOGIC;
+            ready_out:  out STD_LOGIC
     
-            
-            -- Data lines
-            data_in:         in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);            -- input port
-            data_out:        out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);           -- output port
-            
-            empty_out:           out STD_LOGIC
         );
     end component;
-    
-    function get_register_address_size(
-        registers:                  INTEGER
-    ) return INTEGER;
-    
 end package;
 
-package body REGISTERS is
-    function get_register_address_size(
-        registers:                  INTEGER
-    ) return INTEGER is    
-    begin 
-        return INTEGER(ceil(log2(REAL(REGISTERS))));
-    end function;
-end package body;

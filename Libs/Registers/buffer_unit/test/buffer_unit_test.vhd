@@ -9,23 +9,24 @@ end buffer_unit_test;
 architecture Behavioral of buffer_unit_test is
     constant DATA_SIZE: INTEGER := 8;
     constant QUEUE_SIZE: INTEGER := 16;
-    constant COUNTER_SIZE: INTEGER := 4;
+    constant BUFFER_SIZE_BITS: INTEGER := 4;
 
     component buffer_unit is
         Generic (
             DATA_SIZE: INTEGER := 8;
-            COUNTER_SIZE: INTEGER := 3
+            BUFFER_SIZE_BITS: INTEGER := 3
         );
         Port (         
             clk:        in STD_LOGIC;
             reset:      in STD_LOGIC;
+            enable:     in STD_LOGIC;
         
             init:       in STD_LOGIC;
             add_in:     in STD_LOGIC;
             
             step_in:   in STD_LOGIC;
             send_in:    in STD_LOGIC;
-            counter_in: in STD_LOGIC_VECTOR(COUNTER_SIZE-1 downto 0);
+            counter_in: in STD_LOGIC_VECTOR(BUFFER_SIZE_BITS-1 downto 0);
             data_in:    in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
              
             valid_out:  out STD_LOGIC;
@@ -35,19 +36,20 @@ architecture Behavioral of buffer_unit_test is
         );
     end component;
     
-    signal clk, reset, init, step_in, add_in, send_in, valid_out, ready_out: STD_LOGIC;
-    signal counter_in: STD_LOGIC_VECTOR(COUNTER_SIZE-1 downto 0);
+    signal clk, reset, init, step_in, add_in, send_in, valid_out, ready_out, enable: STD_LOGIC;
+    signal counter_in: STD_LOGIC_VECTOR(BUFFER_SIZE_BITS-1 downto 0);
     signal data_in,data_out: STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
    
 begin
     unit: buffer_unit 
         Generic map (
             DATA_SIZE => DATA_SIZE,
-            COUNTER_SIZE => COUNTER_SIZE
+            BUFFER_SIZE_BITS => BUFFER_SIZE_BITS
         )
         Port map (
             clk => clk, 
             reset => reset, 
+            enable => enable,
             init => init, 
             add_in => add_in, 
             step_in => step_in, 
@@ -72,9 +74,10 @@ begin
     begin 
         reset <= '1'; 
         wait until rising_edge(clk);
-        counter_in <= STD_LOGIC_VECTOR(to_unsigned(10, COUNTER_SIZE));
+        counter_in <= STD_LOGIC_VECTOR(to_unsigned(10, BUFFER_SIZE_BITS));
         
         reset <= '0'; 
+        enable <= '1';
         init <= '1'; 
         add_in <= '0';
         step_in <= '0';

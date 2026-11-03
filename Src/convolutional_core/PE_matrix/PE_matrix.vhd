@@ -2,6 +2,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 use work.PE_MATRIX_PARAMETERS.ALL;
+use work.registers.ALL;
 
 entity PE_matrix is 
     Port ( 
@@ -51,30 +52,6 @@ architecture Behavioral of PE_matrix is
     
     signal ready_lines: STD_LOGIC_VECTOR(DEPTH-1 downto 0);
     
-    component buffer_unit is
-        Generic (
-            DATA_SIZE: INTEGER := 8;
-            COUNTER_SIZE: INTEGER := 3
-        );
-        Port (         
-            clk:                in STD_LOGIC;
-            reset:              in STD_LOGIC;
-            enable:             in STD_LOGIC;
-        
-            init:       in STD_LOGIC;
-            add_in:     in STD_LOGIC;
-            
-            step_in:    in STD_LOGIC;
-            send_in:    in STD_LOGIC;
-            counter_in: in STD_LOGIC_VECTOR(COUNTER_SIZE-1 downto 0);
-            data_in:    in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-             
-            data_out:   out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-            valid_out:  out STD_LOGIC;
-            ready_out:  out STD_LOGIC
-    
-        );
-    end component;
     component PE is 
         Port ( 
             clk:                    in STD_LOGIC;  
@@ -149,7 +126,7 @@ begin
         output_buffer: buffer_unit 
             Generic map (
                 DATA_SIZE => ACCUMULATOR_SIZE,
-                COUNTER_SIZE => BUFFER_SIZE_BITS
+                BUFFER_SIZE_BITS => BUFFER_SIZE_BITS
             )
             Port map (
                 clk => clk, 
@@ -176,7 +153,7 @@ begin
         weight_buffer: buffer_unit 
             Generic map (
                 DATA_SIZE => DATA_SIZE,
-                COUNTER_SIZE => BUFFER_SIZE_BITS
+                BUFFER_SIZE_BITS => BUFFER_SIZE_BITS
             )
             Port map (
                 clk => clk, 
@@ -203,7 +180,7 @@ begin
             activation_buffer: buffer_unit 
                 Generic map (
                     DATA_SIZE => DATA_SIZE,
-                    COUNTER_SIZE => BUFFER_SIZE_BITS
+                    BUFFER_SIZE_BITS => BUFFER_SIZE_BITS
                 )
                 Port map (
                     clk => clk, 
@@ -225,7 +202,7 @@ begin
             activation_buffer: buffer_unit 
                 Generic map (
                     DATA_SIZE => DATA_SIZE,
-                    COUNTER_SIZE => BUFFER_SIZE_BITS
+                    BUFFER_SIZE_BITS => BUFFER_SIZE_BITS
                 )
                 Port map (
                     clk => clk, 
@@ -249,9 +226,8 @@ begin
     control_interface_routing: for i in 0 to (CONTROL_LINES-1) generate 
         control_interconnect_ports_in(i,0)(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB) <= matrix_control_bus(MATRIX_CONTROL_CONV_SKIP_X_MSB downto MATRIX_CONTROL_CONV_SKIP_X_LSB);      
         control_interconnect_ports_in(i,0)(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB) <= matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB); 
-        control_interconnect_ports_in(i,0)(PE_ACTIVATION_INIT) <= matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS);
-        control_interconnect_ports_in(i,0)(PE_WEIGHT_INIT) <= matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS);
-        control_interconnect_ports_in(i,0)(PE_ACCUMULATOR_INIT) <= matrix_control_bus(MATRIX_CONTROL_LOAD_OUTPUTS);
+        control_interconnect_ports_in(i,0)(PE_ACTIVATIONS_CLEAR) <= matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS);
+        control_interconnect_ports_in(i,0)(PE_INIT) <= matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS);
         control_interconnect_ports_in(i,0)(PE_PROCESS_START) <= matrix_control_bus(MATRIX_CONTROL_PROCESS_START);
         control_interconnect_ports_in(i,0)(PE_PROCESS_TYPE) <= matrix_control_bus(MATRIX_CONTROL_PROCESS_TYPE);
     end generate; 
