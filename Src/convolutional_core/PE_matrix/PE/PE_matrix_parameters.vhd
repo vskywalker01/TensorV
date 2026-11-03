@@ -34,14 +34,13 @@ package PE_MATRIX_PARAMETERS is
     
     -- Definition of PE control lines (used to control a single PE)
     
-    constant PE_PROCESS_START:              INTEGER := 0;
+    constant PE_INIT:                       INTEGER := 0;
+    constant PE_ACTIVATIONS_CLEAR:          INTEGER := PE_INIT+1; 
+    constant PE_PROCESS_START:              INTEGER := PE_ACTIVATIONS_CLEAR+1;
     constant PE_PROCESS_TYPE:               INTEGER := PE_PROCESS_START+1;
     constant PE_WEIGHT_VALID:               INTEGER := PE_PROCESS_TYPE+1;
     constant PE_ACTIVATION_VALID:           INTEGER := PE_WEIGHT_VALID+1;
-    constant PE_ACCUMULATOR_INIT:           INTEGER := PE_ACTIVATION_VALID+1;
-    constant PE_WEIGHT_INIT:                INTEGER := PE_ACCUMULATOR_INIT+1;
-    constant PE_ACTIVATION_INIT:            INTEGER := PE_WEIGHT_INIT+1;
-    constant PE_CONV_SHIFTS_LSB:            INTEGER := PE_ACTIVATION_INIT+1;
+    constant PE_CONV_SHIFTS_LSB:            INTEGER := PE_ACTIVATION_VALID+1;
     constant PE_CONV_SHIFTS_MSB:            INTEGER := PE_CONV_SHIFTS_LSB+CONV_SHIFTS_BITS-1;
     constant PE_CONV_SKIP_LSB:              INTEGER := PE_CONV_SHIFTS_MSB+1;
     constant PE_CONV_SKIP_MSB:              INTEGER := PE_CONV_SKIP_LSB+CONV_SKIP_BITS-1;
@@ -51,8 +50,9 @@ package PE_MATRIX_PARAMETERS is
     -- Definition of PE status lines (used as status lines from a single PE)
     
     constant PE_ACTIVE:                 INTEGER := 0;
-    constant PE_STATUS:                 INTEGER := PE_ACTIVE+1;
-    constant PE_OUTPUT_VALID:           INTEGER := PE_STATUS+1;
+    constant PE_STATUS_TYPE:            INTEGER := PE_ACTIVE+1;
+    constant PE_STATUS_WAITING:         INTEGER := PE_STATUS_TYPE+1;
+    constant PE_OUTPUT_VALID:           INTEGER := PE_STATUS_WAITING+1;
     constant PE_READY:                  INTEGER := PE_OUTPUT_VALID+1;
     constant PE_STATUS_INTERFACE_SIZE:  INTEGER := PE_READY+1;
     

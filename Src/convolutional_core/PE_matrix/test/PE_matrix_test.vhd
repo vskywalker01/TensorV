@@ -135,9 +135,9 @@ begin
         
         wait until falling_edge(clk); 
         
-        matrix_buffers_control_bus(MATRIX_BUFFERS_ACTIVATIONS_INIT) <= '1';
-        matrix_buffers_control_bus(MATRIX_BUFFERS_WEIGHTS_INIT) <= '1';
-        matrix_buffers_control_bus(MATRIX_BUFFERS_OUTPUTS_INIT) <= '1';
+        matrix_buffers_control_bus(MATRIX_BUFFERS_ACTIVATIONS_INIT) <= '0';
+        matrix_buffers_control_bus(MATRIX_BUFFERS_WEIGHTS_INIT) <= '0';
+        matrix_buffers_control_bus(MATRIX_BUFFERS_OUTPUTS_INIT) <= '0';
         
  
         wait until falling_edge(clk); 
@@ -191,14 +191,17 @@ begin
         wait until falling_edge(clk);
         matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS) <= '1';
         matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS) <= '1';
-        matrix_control_bus(MATRIX_CONTROL_LOAD_OUTPUTS) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_OUTPUTS) <= '1';
         matrix_control_bus(MATRIX_CONTROL_PROCESS_START) <= '0';
         matrix_control_bus(MATRIX_CONTROL_PROCESS_TYPE) <= '0';
         
-        wait until (matrix_status_bus(MATRIX_STATUS_LINES_READY_LSB)='1');
+        
         wait until falling_edge(clk); 
         
-        matrix_control_bus(MATRIX_CONTROL_LOAD_OUTPUTS) <= '1';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_OUTPUTS) <= '0';
+        wait until (matrix_buffers_status_bus(MATRIX_BUFFERS_STATUS_ACTIVATIONS_READY_LSB)='1');
         wait until falling_edge(clk); 
         
         matrix_control_bus(MATRIX_CONTROL_LOAD_OUTPUTS) <= '0';
@@ -212,7 +215,7 @@ begin
         wait until falling_edge(clk);
         
         matrix_control_bus(MATRIX_CONTROL_PROCESS_START) <= '1';
-        matrix_control_bus(MATRIX_CONTROL_PROCESS_TYPE) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_PROCESS_TYPE) <= '1';
         wait until falling_edge(clk); 
         
         matrix_control_bus(MATRIX_CONTROL_PROCESS_START) <= '0';

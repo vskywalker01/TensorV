@@ -71,10 +71,11 @@ begin
     
     test: process 
         type SAMPLE_ARRAY is array (natural range <>) of INTEGER; 
-        constant TEST_VECTOR: SAMPLE_ARRAY := (-50,20,-30,90,-40,60,-10,80,-70, 12);
+        constant TEST_VECTOR: SAMPLE_ARRAY := (-50,20,-30,90,-40,60,-10,80);
         constant TEST_WEIGHT: SAMPLE_ARRAY := (2,-5,3);
-        constant TEST_RESULTS: SAMPLE_ARRAY := (-290,460,-630,560,-410,410,-630,546);
+        constant TEST_RESULTS: SAMPLE_ARRAY := (-290,460,-630,560,-410,410);
         
+        constant TEST_VECTOR_SIZE: INTEGER := 8;
         constant TEST_WINDOW_SIZE: INTEGER := 5;
         constant TEST_WEIGHT_SIZE: INTEGER := 3;
         
@@ -121,13 +122,12 @@ begin
         accumulator_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(accumulator,ACCUMULATOR_SIZE));
         
         -- We set the PE to process a convolution between a 
-        control_in( PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB) <= STD_LOGIC_VECTOR(to_unsigned(1,CONV_SKIP_BITS));
+        control_in( PE_CONV_SKIP_MSB downto  PE_CONV_SKIP_LSB) <= (others => '0');
         control_in( PE_CONV_SHIFTS_MSB downto  PE_CONV_SHIFTS_LSB) <= (others => '0');
         
         -- we initialize all the internal queues 
-        control_in(PE_ACTIVATION_INIT) <= '1';
-        control_in(PE_WEIGHT_INIT) <= '1';
-        control_in(PE_ACCUMULATOR_INIT) <= '1';
+        control_in(PE_INIT) <= '1';
+        control_in(PE_ACTIVATIONS_CLEAR) <= '1';
         control_in(PE_WEIGHT_VALID) <= '0';
         control_in(PE_ACTIVATION_VALID) <= '0';
         control_in(PE_PROCESS_START) <= '0';
@@ -138,9 +138,8 @@ begin
         
         -- Loading phase
         -- We signal the PE to receive data in the weight and activation queues
-        control_in(PE_ACTIVATION_INIT) <= '0';
-        control_in(PE_WEIGHT_INIT) <= '0';
-        control_in(PE_ACCUMULATOR_INIT) <= '0';
+        control_in(PE_INIT) <= '0';
+        control_in(PE_ACTIVATIONS_CLEAR) <= '0';
         control_in(PE_WEIGHT_VALID) <= '1';
         control_in(PE_ACTIVATION_VALID) <= '1';
         
@@ -167,6 +166,7 @@ begin
         
         -- We send a process start command to start the convolution of three elements
         control_in( PE_CONV_SHIFTS_MSB downto  PE_CONV_SHIFTS_LSB) <= STD_LOGIC_VECTOR(to_unsigned(3,CONV_SHIFTS_BITS));
+        control_in( PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB) <= STD_LOGIC_VECTOR(to_unsigned(1,CONV_SKIP_BITS));
         control_in(PE_PROCESS_START) <= '1';
         control_in(PE_PROCESS_TYPE) <= '0';
         wait until falling_edge(clk); 
@@ -174,6 +174,7 @@ begin
         -- the start command should last only one clock cycle
         
         control_in( PE_CONV_SHIFTS_MSB downto  PE_CONV_SHIFTS_LSB) <= (others => '0');
+        control_in( PE_CONV_SKIP_MSB downto  PE_CONV_SKIP_LSB) <= (others => '0');
         control_in(PE_PROCESS_START) <= '0';
         control_in(PE_PROCESS_TYPE) <= '0';
 
@@ -181,10 +182,10 @@ begin
         wait until falling_edge(clk);
         wait until falling_edge(clk);
         wait until falling_edge(clk);
-        wait until rising_edge(status_out(PE_READY));
+        wait until rising_edge(status_out(PE_STATUS_WAITING));
         wait until falling_edge(clk);
         
-        -- simulating a buffer loading phase 
+        -- simulating a buffer stall 
         for i in 0 to 10 loop 
             wait until falling_edge(clk); 
         end loop;
@@ -192,22 +193,24 @@ begin
         -- Second loading phase
 
         control_in(PE_ACTIVATION_VALID) <= '1';
-        for i in 0 to TEST_WINDOW_SIZE-1 loop
+        for i in 0 to TEST_VECTOR_SIZE-TEST_WINDOW_SIZE-1 loop
                 -- The second hald of the activation vector is loaded in the activation queue
                 activation_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_VECTOR(TEST_WINDOW_SIZE+i),DATA_SIZE));
                 wait until falling_edge(clk);   
         end loop; 
         control_in(PE_ACTIVATION_VALID) <= '0';
         
-        -- sending the second start command 
+        -- We send a process start command to start the convolution of three elements
         control_in( PE_CONV_SHIFTS_MSB downto  PE_CONV_SHIFTS_LSB) <= STD_LOGIC_VECTOR(to_unsigned(3,CONV_SHIFTS_BITS));
+        control_in( PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB) <= STD_LOGIC_VECTOR(to_unsigned(1,CONV_SKIP_BITS));
         control_in(PE_PROCESS_START) <= '1';
         control_in(PE_PROCESS_TYPE) <= '0';
         wait until falling_edge(clk); 
         
         -- the start command should last only one clock cycle
         
-        control_in(PE_CONV_SHIFTS_MSB downto  PE_CONV_SHIFTS_LSB) <= (others => '0');
+        control_in( PE_CONV_SHIFTS_MSB downto  PE_CONV_SHIFTS_LSB) <= (others => '0');
+        control_in( PE_CONV_SKIP_MSB downto  PE_CONV_SKIP_LSB) <= (others => '0');
         control_in(PE_PROCESS_START) <= '0';
         control_in(PE_PROCESS_TYPE) <= '0';
         

@@ -38,7 +38,6 @@ entity PE_stage3 is
     );
 end PE_stage3;
 
-
 architecture Behavioral of PE_stage3 is    
     component accumulation_stage is
         Generic (
@@ -91,6 +90,7 @@ begin
                 status_forward_out(PE_READY) <= '1';
                 status_forward_out(PE_ACTIVE) <= '0';
                 
+               
                 -- the accumulator is initialized to 0
                 accumulator <= (others => '0');
                 
@@ -99,11 +99,12 @@ begin
                 control_forward_out <= control_forward_in; 
                 status_forward_out(PE_READY) <= status_forward_in(PE_READY);
                 status_forward_out(PE_ACTIVE) <= status_forward_in(PE_ACTIVE);
-                status_forward_out(PE_STATUS) <= status_forward_in(PE_STATUS);
+                status_forward_out(PE_STATUS_TYPE) <= status_forward_in(PE_STATUS_TYPE);
+                status_forward_out(PE_STATUS_WAITING) <= status_forward_in(PE_STATUS_WAITING);
                 
                 -- if the PE is enabled and it is processing a row (reduction_valid = '1' and reduction_type = '1'), the accumulation result will be saved into the internal
                 -- accumulator 
-                if (status_forward_in(PE_READY)='0' and status_forward_in(PE_STATUS) = '0' and reduction_valid_in = '1' and reduction_type_in = '1') then 
+                if (status_forward_in(PE_READY)='0' and status_forward_in(PE_STATUS_TYPE) = '0' and reduction_valid_in = '1' and reduction_type_in = '1') then 
                     accumulator <= accumulation_stage_out; 
                     accumulator_loopback_valid_out <= '0';
                     status_forward_out(PE_OUTPUT_VALID) <= '0';
@@ -111,7 +112,7 @@ begin
                 -- if the PC is enabled and had processed a row (reduction_valid = '0' and reduction_type = '1'), the result will be forwarded in the internal loopback of the Pe and the 
                 -- internal accumulator will be initialized
                 
-                elsif (status_forward_in(PE_READY)='0' and status_forward_in(PE_STATUS) = '0' and reduction_valid_in = '0' and reduction_type_in = '1') then 
+                elsif (status_forward_in(PE_READY)='0' and status_forward_in(PE_STATUS_TYPE) = '0' and reduction_valid_in = '0' and reduction_type_in = '1') then 
                     accumulator <= (others => '0'); 
                     accumulator_loopback_valid_out <= '1';
                     accumulator_loopback_out <= accumulator; 
@@ -120,15 +121,15 @@ begin
                 -- if the PC is enabled and is performing an unloading phase, the past accumulation (from the accumulation queue) is summed with the value coming from the past PE.
                 -- the result will be then forwarded to the next PE.
                     
-                elsif (status_forward_in(PE_READY)='0' and status_forward_in(PE_STATUS) = '1' and reduction_valid_in = '1' and reduction_type_in = '0') then 
+                elsif (status_forward_in(PE_READY)='0' and status_forward_in(PE_STATUS_TYPE) = '1' and reduction_valid_in = '1' and reduction_type_in = '0') then 
 
                     accumulator_loopback_valid_out <= '0';
                     accumulator_forward_out <= accumulation_stage_out;
                     status_forward_out(PE_OUTPUT_VALID) <= '1';
                    
                 else 
-                    -- if the PE is waiting for a start signal and PE_aCCUMULATOR_INIT = '1', the accumulator is resetted,
-                    if (control_forward_in(PE_ACCUMULATOR_INIT) = '1') then 
+
+                    if (control_forward_in(PE_PROCESS_START)='1') then 
                         accumulator <= (others => '0'); 
                        
                     end if; 

@@ -18,8 +18,8 @@ entity convolutional_queue is
         clk: in STD_LOGIC;                                          -- clock 
         reset: in STD_LOGIC;                                        -- reset (when '1') 
         
-        init_activation: in STD_LOGIC;
-        init_weight:    in STD_LOGIC;
+        clear_activation:   in STD_LOGIC;
+        init:               in STD_LOGIC;
     
         add_weight: in STD_LOGIC;
         add_activation: in STD_LOGIC;
@@ -85,20 +85,22 @@ begin
                 done_out <= '0';
                 empty_out <= '1';
            
-            elsif (init_activation = '1' or init_weight = '1') then 
-                if (init_weight = '1') then
+            elsif (init= '1' or clear_activation = '1') then 
+                if (init = '1') then
                     skip <= UNSIGNED(skip_in);
                     current_skip <= UNSIGNED(skip_in); 
                     weight_size <= (others => '0');
+                    activation_tail <= (others => '0');
+                    activation_current_head <= (others => '0');
+                    weight_current_head <= (others => '0');
+                    activation_head <= (others => '0');
+
                 else 
                     current_skip <= skip;
+                    activation_current_head <= activation_head;
+                    weight_current_head <= (others => '0');
                 end if; 
-                
-                activation_current_head <= (others => '0');
-                weight_current_head <= (others => '0');
-                activation_head <= (others => '0');
-                activation_tail <= (others => '0');
-                
+       
             else                         
                 if (add_weight = '1' and weight_size < WEIGHT_REGISTERS) then
                     weight_register_file(to_integer(weight_size(WEIGHT_QUEUE_SIZE_BITS-1 downto 0))) <= weight_in;
@@ -141,8 +143,7 @@ begin
                     empty_out <= '1';
                 else 
                     empty_out <= '0';
-                end if;
-                        
+                end if;        
             end if; 
         end if;
     end process;

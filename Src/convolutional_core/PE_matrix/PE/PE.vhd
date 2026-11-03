@@ -2,7 +2,6 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL; 
 use work.PE_matrix_parameters.ALL;
 
-
 entity PE is 
     Port ( 
         clk:                    in STD_LOGIC;  
@@ -60,9 +59,7 @@ architecture Behavioral of PE is
             accumulator_queue_out:              out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
             
             -- Queue Control signals 
-            queue_empty_out:                    out STD_LOGIC;
-            row_done_out:                       out STD_LOGIC;
-            accumulator_empty_out:              out STD_LOGIC
+            row_done_out:                       out STD_LOGIC
         );
     end component;
     component PE_stage2 is
@@ -92,9 +89,6 @@ architecture Behavioral of PE is
             
             
             -- Queue control lines (Stage 1)
-            
-            queue_empty_in:                     in STD_LOGIC;
-            accumulator_empty_in:               in STD_LOGIC;
             
             row_done_in:                        in STD_LOGIC;
             
@@ -185,8 +179,6 @@ begin
             weight_queue_out => weight_queue,
             activation_queue_out => activation_queue,
             accumulator_queue_out => accumulator_queue,
-            queue_empty_out => queue_empty, 
-            accumulator_empty_out => accumulator_empty,
             row_done_out => row_done
             
         );
@@ -210,8 +202,6 @@ begin
             weight_queue_in => weight_queue,
             activation_queue_in => activation_queue,
             accumulator_queue_in => accumulator_queue,
-            queue_empty_in => queue_empty, 
-            accumulator_empty_in => accumulator_empty,
             row_done_in => row_done,
             
             reduction_partial1_out => reduction_partial1,
