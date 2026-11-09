@@ -15,4 +15,13 @@ package BIT_REDUCTORS is
             result:     out STD_LOGIC
         );
     end component;
+    component and_reductor is
+        Generic(
+            DATA_SIZE: INTEGER := 20
+        );
+        Port (
+            data_in:    in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+            result:     out STD_LOGIC
+        );
+    end component;
 end package;

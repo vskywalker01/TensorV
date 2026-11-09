@@ -86,10 +86,11 @@ begin
                 accumulator_forward_out <= (others => '0');
                 
                 -- The status lines assumes the PE as always ready and always with a valid output
-                status_forward_out(PE_OUTPUT_VALID) <= '1';
+                status_forward_out(PE_OUTPUT_VALID) <= '0';
                 status_forward_out(PE_READY) <= '1';
                 status_forward_out(PE_ACTIVE) <= '0';
-                
+                status_forward_out(PE_STATUS_TYPE) <= '0';
+                status_forward_out(PE_STATUS_WAITING) <= '0';
                
                 -- the accumulator is initialized to 0
                 accumulator <= (others => '0');
@@ -98,7 +99,7 @@ begin
                 
                 control_forward_out <= control_forward_in; 
                 status_forward_out(PE_READY) <= status_forward_in(PE_READY);
-                status_forward_out(PE_ACTIVE) <= status_forward_in(PE_ACTIVE);
+                status_forward_out(PE_ACTIVE) <= '1';
                 status_forward_out(PE_STATUS_TYPE) <= status_forward_in(PE_STATUS_TYPE);
                 status_forward_out(PE_STATUS_WAITING) <= status_forward_in(PE_STATUS_WAITING);
                 
@@ -122,13 +123,15 @@ begin
                 -- the result will be then forwarded to the next PE.
                     
                 elsif (status_forward_in(PE_READY)='0' and status_forward_in(PE_STATUS_TYPE) = '1' and reduction_valid_in = '1' and reduction_type_in = '0') then 
-
+                    if(status_forward_in(PE_ACTIVE)='1') then 
+                        accumulator_forward_out <= accumulation_stage_out;
+                    else 
+                        accumulator_forward_out <= reduction_partial1_in;
+                    end if;
                     accumulator_loopback_valid_out <= '0';
-                    accumulator_forward_out <= accumulation_stage_out;
                     status_forward_out(PE_OUTPUT_VALID) <= '1';
-                   
+                    
                 else 
-
                     if (control_forward_in(PE_PROCESS_START)='1') then 
                         accumulator <= (others => '0'); 
                        

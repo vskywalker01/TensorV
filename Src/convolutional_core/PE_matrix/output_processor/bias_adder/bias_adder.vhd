@@ -51,7 +51,7 @@ begin
 
     -- if the bias size is lower than the accumulations, the sign of the bias is extended to match the output size
     bias_padding: if (DATA_SIZE > BIAS_SIZE) generate 
-        bias(DATA_SIZE downto BIAS_SIZE) <= (others => bias_in(BIAS_SIZE-1))    when (bias_valid_in = '1') 
+        bias(DATA_SIZE-1 downto BIAS_SIZE) <= (others => bias_in(BIAS_SIZE-1))    when (bias_valid_in = '1') 
                                                                                 else (others => '0');
     end generate; 
     

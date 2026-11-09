@@ -2,6 +2,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use work.PE_MATRIX_PARAMETERS.ALL; 
 
+
 entity PE_stage2 is
     Port ( 
         clk:                        in STD_LOGIC;  
@@ -26,7 +27,6 @@ entity PE_stage2 is
         weight_queue_in:          in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
         activation_queue_in:      in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
         accumulator_queue_in:     in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
-        
         
         -- Queue control lines (Stage 1)
         
@@ -87,9 +87,12 @@ begin
                 reduction_type_out <= '0';
                 
                 -- The status lines assumes the PE as always ready and always with a valid output
-                status_forward_out(PE_OUTPUT_VALID) <= '1';
+                status_forward_out(PE_OUTPUT_VALID) <= '0';
                 status_forward_out(PE_READY) <= '1';
                 status_forward_out(PE_ACTIVE) <= '0';
+                status_forward_out(PE_STATUS_TYPE) <= '0';
+                status_forward_out(PE_STATUS_WAITING) <= '0';
+                
             else
 
                 -- Matrix forward lines
@@ -111,18 +114,19 @@ begin
                 -- the reduction_partial1 line will assume the accumulation from the queue and reduction_partial2 line will assume 0.
                 -- This is done only when there is a valid accumulator input (data available from past PE).
                 
-                elsif (status_forward_in(PE_READY)='0' and status_forward_in(PE_STATUS_TYPE) = '1' and status_forward_in(PE_STATUS_WAITING) = '0' and status_forward_in(PE_OUTPUT_VALID)= '1') then
-                    reduction_partial1_out <= accumulator_queue_in;
-                    reduction_partial2_out <= (others => '0');
-                    reduction_valid_out <= '1';           
-                    reduction_type_out <= '0';
+                elsif (status_forward_in(PE_READY)='0' and status_forward_in(PE_STATUS_TYPE) = '1' and status_forward_in(PE_STATUS_WAITING) = '0') then
+                    if ((status_forward_in(PE_OUTPUT_VALID)= '1' and status_forward_in(PE_ACTIVE)='1') or status_forward_in(PE_ACTIVE)='0') then 
+                        reduction_partial1_out <= accumulator_queue_in;
+                        reduction_partial2_out <= (others => '0');
+                        reduction_valid_out <= '1';           
+                        reduction_type_out <= '0';
+                    end if; 
                     
                -- if the PE has processed a row, the accumulator will be pushed inside its queue in the third stage (the reduction is not valid)
  
                 elsif (status_forward_in(PE_READY)='0' and status_forward_in(PE_STATUS_TYPE) = '0' and row_done_in = '1') then 
                     reduction_valid_out <= '0';
                     reduction_type_out <= '1';
- 
                 else 
                     reduction_valid_out <= '0';   
                     reduction_type_out <= '0';

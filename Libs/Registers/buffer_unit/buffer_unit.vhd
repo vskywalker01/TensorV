@@ -54,7 +54,7 @@ begin
                 counter <= (others => '0');
                 head <= (others => '0'); 
                 tail <= (others => '0'); 
-                
+                data_out <= (others => 'Z');
                 ready_out <= '1';
                 valid_out <= '0';
                 
@@ -62,30 +62,30 @@ begin
                 if (add_in = '1' and buffer_full = '0') then 
                     register_file(to_integer(tail(BUFFER_SIZE_BITS-1 downto 0))) <= data_in;
                     tail <= (tail + 1); 
+                    
                 
                 elsif (enable = '1') then
                     if (send_in = '1' ) then 
-                        counter <= UNSIGNED(counter_in); 
                         ready_out <= '0'; 
-                        if (buffer_empty = '0') then 
-                            data_out <= register_file(to_integer(head(BUFFER_SIZE_BITS-1 downto 0)));
-                            head <= (head + 1); 
-                            valid_out <= '1';
-                        else 
-                            valid_out <= '0';
-                        end if; 
+                        counter <= UNSIGNED(counter_in); 
+                        data_out <= (others => 'Z');
                     elsif (counter > 0 and buffer_empty = '0' and step_in = '1') then 
                         data_out <= register_file(to_integer(head(BUFFER_SIZE_BITS-1 downto 0)));
                         head <= (head + 1); 
                         counter <= counter - 1; 
                         ready_out <= '0'; 
-                        valid_out <= '1';
                     elsif (counter = 0) then 
+                        data_out <= (others => 'Z');
                         ready_out <= '1';
-                        valid_out <= '0';
                     else 
-                        valid_out <= '0';
+                        data_out <= (others => 'Z');
                     end if;
+                end if; 
+                
+                if (counter > 0 and buffer_empty = '0' and step_in = '1') then
+                    valid_out <= '1';
+                else 
+                    valid_out <= '0';
                 end if; 
             end if;
         end if;

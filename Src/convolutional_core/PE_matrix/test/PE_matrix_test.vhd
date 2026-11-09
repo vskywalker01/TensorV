@@ -21,7 +21,7 @@ architecture Behavioral of PE_matrix_test is
             
             weights_data_in:                 in MATRIX_WEIGHTS_DATA_INTERFACE; 
             activations_data_in:             in MATRIX_ACTIVATIONS_DATA_INTERFACE; 
-            outputs_data_in:                 in MATRIX_OUTPUTS_DATA_INTERFACE; 
+            bias_data_in:                    in MATRIX_BIAS_DATA_INTERFACE; 
             outputs_data_out:                out MATRIX_OUTPUTS_DATA_INTERFACE
         );
     end component;
@@ -29,7 +29,8 @@ architecture Behavioral of PE_matrix_test is
     signal clk, reset: STD_LOGIC;
     signal weights_data_in:                     MATRIX_WEIGHTS_DATA_INTERFACE;
     signal activations_data_in:                 MATRIX_ACTIVATIONS_DATA_INTERFACE;
-    signal outputs_data_in,outputs_data_out:    MATRIX_OUTPUTS_DATA_INTERFACE;
+    signal bias_data_in:                        MATRIX_BIAS_DATA_INTERFACE;
+    signal outputs_data_out:                    MATRIX_OUTPUTS_DATA_INTERFACE;
     
     signal matrix_control_bus:                  MATRIX_CONTROL_INTERFACE;
     signal matrix_status_bus:                   MATRIX_STATUS_INTERFACE;
@@ -47,7 +48,7 @@ begin
             
             weights_data_in => weights_data_in,
             activations_data_in => activations_data_in, 
-            outputs_data_in => outputs_data_in, 
+            bias_data_in => bias_data_in, 
             outputs_data_out => outputs_data_out, 
             matrix_control_bus => matrix_control_bus,
             matrix_status_bus => matrix_status_bus,
@@ -106,13 +107,16 @@ begin
         wait until falling_edge(clk);
         reset <= '0'; 
         
-        -- reset phase 
+        wait until falling_edge(clk);
+        matrix_buffers_control_bus(MATRIX_BUFFERS_ACTIVATIONS_INIT) <= '0';
+        matrix_buffers_control_bus(MATRIX_BUFFERS_WEIGHTS_INIT) <= '0';
+        matrix_buffers_control_bus(MATRIX_BUFFERS_OUTPUTS_INIT) <= '0';
+        matrix_buffers_control_bus(MATRIX_BUFFERS_BIAS_INIT) <= '0';             
+        matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_WEIGHTS_MSB downto MATRIX_BUFFERS_ADD_WEIGHTS_LSB) <= (others => '0');
+        matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_ACTIVATIONS_MSB downto MATRIX_BUFFERS_ADD_ACTIVATIONS_LSB) <= (others => '0');
+        matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_BIAS_MSB downto MATRIX_BUFFERS_ADD_BIAS_LSB) <= (others => '0');
+        matrix_buffers_control_bus(MATRIX_BUFFERS_STEP_OUTPUTS_MSB downto MATRIX_BUFFERS_STEP_OUTPUTS_LSB) <= (others => '0');
         
-        
-        -- resetting buffers
-        matrix_buffers_control_bus(MATRIX_BUFFERS_ACTIVATIONS_INIT) <= '1';
-        matrix_buffers_control_bus(MATRIX_BUFFERS_WEIGHTS_INIT) <= '1';
-        matrix_buffers_control_bus(MATRIX_BUFFERS_OUTPUTS_INIT) <= '1';
         
         matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_X_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_X_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_Y_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_Y_LSB) <= (others => '0');
@@ -121,66 +125,116 @@ begin
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_CONV_SKIP_X_MSB downto MATRIX_CONTROL_CONV_SKIP_X_LSB) <= (others => '0');
-       
-        matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS) <= '0';
-        matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS) <= '0';
-        matrix_control_bus(MATRIX_CONTROL_LOAD_OUTPUTS) <= '0';
-        matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS) <= '0';
-        matrix_control_bus(MATRIX_CONTROL_PROCESS_START) <= '0';
-        matrix_control_bus(MATRIX_CONTROL_PROCESS_TYPE) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_BIAS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_WEIGHTS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_COMMAND_VALID) <= '0';
+        
+        wait until falling_Edge(clk);
         
         
+        
+        -- reset phase 
+        
+        -- resetting buffers
+        matrix_buffers_control_bus(MATRIX_BUFFERS_ACTIVATIONS_INIT) <= '1';
+        matrix_buffers_control_bus(MATRIX_BUFFERS_WEIGHTS_INIT) <= '1';
+        matrix_buffers_control_bus(MATRIX_BUFFERS_OUTPUTS_INIT) <= '1';
+        matrix_buffers_control_bus(MATRIX_BUFFERS_BIAS_INIT) <= '1';             
         matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_WEIGHTS_MSB downto MATRIX_BUFFERS_ADD_WEIGHTS_LSB) <= (others => '0');
         matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_ACTIVATIONS_MSB downto MATRIX_BUFFERS_ADD_ACTIVATIONS_LSB) <= (others => '0');
-     
+        matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_BIAS_MSB downto MATRIX_BUFFERS_ADD_BIAS_LSB) <= (others => '0');
+        matrix_buffers_control_bus(MATRIX_BUFFERS_STEP_OUTPUTS_MSB downto MATRIX_BUFFERS_STEP_OUTPUTS_LSB) <= (others => '0');
+        
+        
+        matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_X_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_Y_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_Y_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_X_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_Y_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_Y_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_SKIP_X_MSB downto MATRIX_CONTROL_CONV_SKIP_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_BIAS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_WEIGHTS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_COMMAND_VALID) <= '1';
+        matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) <= MATRIX_COMMAND_INIT;
         
         wait until falling_edge(clk); 
         
         matrix_buffers_control_bus(MATRIX_BUFFERS_ACTIVATIONS_INIT) <= '0';
         matrix_buffers_control_bus(MATRIX_BUFFERS_WEIGHTS_INIT) <= '0';
         matrix_buffers_control_bus(MATRIX_BUFFERS_OUTPUTS_INIT) <= '0';
-        matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS) <= '1';
+        matrix_buffers_control_bus(MATRIX_BUFFERS_BIAS_INIT) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_COMMAND_VALID) <= '0';
  
         wait until falling_edge(clk); 
-        
-        matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS) <= '0';        
-       
-        
-        -- loading phase (two matrices in the activation buffers)
-        
-        for e in 0 to ((TEST_MATRIX_SIZE*2)-1) loop
-            for l in 0 to (WEIGHT_LINES - 1) loop 
-                if (l < TEST_WEIGHT_SIZE and e < TEST_WEIGHT_SIZE) then
-                    matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_WEIGHTS_LSB+l) <= '1';
-                    weights_data_in(l) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_WEIGHT(l,e),DATA_SIZE));
+             
+        -- loading phase
+        for r in 0 to (TEST_MATRIX_SIZE)-1 loop 
+            for c in 0 to (TEST_MATRIX_SIZE)-1 loop 
+                if (c < TEST_WEIGHT_SIZE and r < TEST_WEIGHT_SIZE) then 
+                    weights_data_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_WEIGHT(r,c),DATA_SIZE));
+                    matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_WEIGHTS_MSB downto MATRIX_BUFFERS_ADD_WEIGHTS_LSB) <= (MATRIX_BUFFERS_ADD_WEIGHTS_LSB+r => '1', others => '0');
                 else 
-                    matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_WEIGHTS_LSB+l) <= '0';
-                end if;
-            end loop; 
-            
-            for l in 0 to (ACTIVATION_LINES - 1) loop         
-                if (l < TEST_MATRIX_SIZE) then
-                    if (e < TEST_MATRIX_SIZE) then 
-                        matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_ACTIVATIONS_LSB+l) <= '1';
-                        activations_data_in(l) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(l,e),DATA_SIZE)); 
-                    else
-                        matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_ACTIVATIONS_LSB+l) <= '1';
-                        activations_data_in(l) <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX2(l,e-TEST_MATRIX_SIZE),DATA_SIZE));
-                    end if;
-                else 
-                    matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_ACTIVATIONS_LSB+l) <= '0';
-                end if;
+                    matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_WEIGHTS_MSB downto MATRIX_BUFFERS_ADD_WEIGHTS_LSB) <= (others => '0');
+                end if; 
                 
-            end loop; 
-                        
-            wait until falling_edge(clk);
-        end loop;
+                activations_data_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(r,c),DATA_SIZE)); 
+                matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_ACTIVATIONS_MSB downto MATRIX_BUFFERS_ADD_ACTIVATIONS_LSB) <= (MATRIX_BUFFERS_ADD_ACTIVATIONS_LSB+r => '1', others => '0');
                 
+                wait until falling_edge(clk);
+            end loop; 
+        end loop; 
+        
         matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_WEIGHTS_MSB downto MATRIX_BUFFERS_ADD_WEIGHTS_LSB) <= (others => '0');
         matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_ACTIVATIONS_MSB downto MATRIX_BUFFERS_ADD_ACTIVATIONS_LSB) <= (others => '0');
-      
+        
+        wait until falling_edge(clk); 
+
+        matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_X_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE,ACTIVATION_MATRIX_SIZE_BITS));
+        matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_Y_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_Y_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE,ACTIVATION_MATRIX_SIZE_BITS));
+        matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_X_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_WEIGHT_SIZE,WEIGHT_MATRIX_SIZE_BITS));
+        matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_Y_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_Y_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_WEIGHT_SIZE,WEIGHT_MATRIX_SIZE_BITS));
+        matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,CONV_SHIFTS_BITS));
+        matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,CONV_SHIFTS_BITS));
+        matrix_control_bus(MATRIX_CONTROL_CONV_SKIP_X_MSB downto MATRIX_CONTROL_CONV_SKIP_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(1,CONV_SKIP_BITS));
+        matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) <= '1';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) <= '1';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_BIAS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS_FLAG) <= '1';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_WEIGHTS_FLAG) <= '1';
+        matrix_control_bus(MATRIX_CONTROL_COMMAND_VALID) <= '1';
+        matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) <= MATRIX_COMMAND_LOAD;
         
         wait until falling_edge(clk);
+
+        matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_X_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_Y_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_Y_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_X_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_Y_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_Y_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_SKIP_X_MSB downto MATRIX_CONTROL_CONV_SKIP_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_BIAS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_WEIGHTS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_COMMAND_VALID) <= '0';     
+        
+        wait until falling_edge(clk); 
+
+        wait until (matrix_buffers_status_bus(MATRIX_BUFFERS_STATUS_ACTIVATIONS_READY_LSB)='1');        
+        wait until falling_edge(clk); 
         
         matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_X_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE,ACTIVATION_MATRIX_SIZE_BITS));
         matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_Y_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_Y_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE,ACTIVATION_MATRIX_SIZE_BITS));
@@ -189,292 +243,76 @@ begin
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,CONV_SHIFTS_BITS));
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,CONV_SHIFTS_BITS));
         matrix_control_bus(MATRIX_CONTROL_CONV_SKIP_X_MSB downto MATRIX_CONTROL_CONV_SKIP_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(1,CONV_SKIP_BITS));
-              
-        wait until falling_edge(clk);
-        matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS) <= '1';
-        matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS) <= '1';
-        matrix_control_bus(MATRIX_CONTROL_LOAD_OUTPUTS) <= '1';
-        matrix_control_bus(MATRIX_CONTROL_PROCESS_START) <= '0';
-        matrix_control_bus(MATRIX_CONTROL_PROCESS_TYPE) <= '0';
-        
-        
-        wait until falling_edge(clk); 
-        
-        matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS) <= '0';
-        matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS) <= '0';
-        matrix_control_bus(MATRIX_CONTROL_LOAD_OUTPUTS) <= '0';
-        wait until (matrix_buffers_status_bus(MATRIX_BUFFERS_STATUS_ACTIVATIONS_READY_LSB)='1');
-        wait until falling_edge(clk); 
-        
-        matrix_control_bus(MATRIX_CONTROL_LOAD_OUTPUTS) <= '0';
-        matrix_control_bus(MATRIX_CONTROL_PROCESS_START) <= '1';
-        matrix_control_bus(MATRIX_CONTROL_PROCESS_TYPE) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_BIAS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_WEIGHTS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_COMMAND_VALID) <= '1';
+        matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) <= MATRIX_COMMAND_COMPUTE;
         
         wait until falling_edge(clk); 
-        matrix_control_bus(MATRIX_CONTROL_PROCESS_START) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_X_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_Y_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_Y_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_X_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_Y_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_Y_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_SKIP_X_MSB downto MATRIX_CONTROL_CONV_SKIP_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_BIAS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_WEIGHTS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_COMMAND_VALID) <= '0';  
         
         wait until (matrix_status_bus(MATRIX_STATUS_LINES_READY_LSB)='1');
         wait until falling_edge(clk);
-        
-        matrix_control_bus(MATRIX_CONTROL_PROCESS_START) <= '1';
-        matrix_control_bus(MATRIX_CONTROL_PROCESS_TYPE) <= '1';
+        matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_X_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE,ACTIVATION_MATRIX_SIZE_BITS));
+        matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_Y_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_Y_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE,ACTIVATION_MATRIX_SIZE_BITS));
+        matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_X_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_WEIGHT_SIZE,WEIGHT_MATRIX_SIZE_BITS));
+        matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_Y_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_Y_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_WEIGHT_SIZE,WEIGHT_MATRIX_SIZE_BITS));
+        matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,CONV_SHIFTS_BITS));
+        matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,CONV_SHIFTS_BITS));
+        matrix_control_bus(MATRIX_CONTROL_CONV_SKIP_X_MSB downto MATRIX_CONTROL_CONV_SKIP_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(1,CONV_SKIP_BITS));
+        matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_BIAS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_WEIGHTS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_COMMAND_VALID) <= '1';
+        matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) <= MATRIX_COMMAND_UNLOAD;
         wait until falling_edge(clk); 
         
-        matrix_control_bus(MATRIX_CONTROL_PROCESS_START) <= '0';
-        matrix_control_bus(MATRIX_CONTROL_PROCESS_TYPE) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_X_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_Y_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_Y_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_X_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_Y_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_Y_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_SKIP_X_MSB downto MATRIX_CONTROL_CONV_SKIP_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_LOAD_BIAS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_CLEAR_WEIGHTS_FLAG) <= '0';
+        matrix_control_bus(MATRIX_CONTROL_COMMAND_VALID) <= '0';  
+                
+                
+        wait until falling_edge(clk);
         
---        -- loading phase (first matrix and weights)
-        
---        for l in 0 to (WEIGHT_LINES -1) loop 
---            weights_control_bus(l)(BUFFER_INTERFACE_INIT_BIT) <= '0';
---            weights_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
---            weights_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '1';
---            weights_control_bus(l)(BUFFER_INTERFACE_SEND_SIZE_MSB downto BUFFER_INTERFACE_SEND_SIZE_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_WEIGHT_SIZE,QUEUE_COUNTERS_SIZE));
---        end loop; 
-        
---        for l in 0 to (ACTIVATION_LINES-1) loop 
---            activations_control_bus(l)(BUFFER_INTERFACE_INIT_BIT) <= '0';
---            activations_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
---            activations_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '1';
---            activations_control_bus(l)(BUFFER_INTERFACE_SEND_SIZE_MSB downto BUFFER_INTERFACE_SEND_SIZE_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE,QUEUE_COUNTERS_SIZE));
---        end loop; 
-        
-----        for l in 0 to (ACCUMULATION_LINES-1) loop 
-----            outputs_control_bus(l)(BUFFER_INTERFACE_INIT_BIT) <= '0';
-----            outputs_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
-----            outputs_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '1';
-----            outputs_control_bus(l)(BUFFER_INTERFACE_SEND_SIZE_MSB downto BUFFER_INTERFACE_SEND_SIZE_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,QUEUE_COUNTERS_SIZE));
-----        end loop; 
+        for l in 0 to (TEST_MATRIX_SIZE)-1 loop 
+            while (matrix_buffers_status_bus(MATRIX_BUFFERS_STATUS_OUTPUT_READY_LSB+l) = '0') loop 
+                matrix_buffers_control_bus(MATRIX_BUFFERS_STEP_OUTPUTS_LSB+l) <= '1';
+                wait until falling_edge(clk);
+            end loop;
+            matrix_buffers_control_bus(MATRIX_BUFFERS_STEP_OUTPUTS_LSB+l) <= '0';
+        end loop;
 
---        for l in 0 to (CONTROL_LINES-1) loop
---            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '1';
---            matrix_control_in(l)(WEIGHT_INIT_BIT) <= '1';
---            matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '1';
---            matrix_control_in(l)(WEIGHT_VALID_BIT) <= '0';
---            matrix_control_in(l)(ACTIVATION_VALID_BIT) <= '0';
---            matrix_control_in(l)(ENABLE_BIT) <= '0';
---            matrix_control_in(l)(PROCESS_TYPE_BIT) <= '0';
---        end loop; 
-
---        wait until falling_edge(clk); 
-        
---        for l in 0 to (WEIGHT_LINES - 1 ) loop 
---            weights_control_bus(l)(BUFFER_INTERFACE_INIT_BIT) <= '0';
---            weights_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
---            weights_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '0';
-            
---        end loop; 
-        
---        for l in 0 to (ACTIVATION_LINES-1) loop 
---            activations_control_bus(l)(BUFFER_INTERFACE_INIT_BIT) <= '0';
---            activations_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
---            activations_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '0';
-            
---        end loop; 
-        
---        for l in 0 to (ACCUMULATION_LINES-1) loop 
---            outputs_control_bus(l)(BUFFER_INTERFACE_INIT_BIT) <= '0';
---            outputs_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
---            outputs_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '0';
-            
---        end loop; 
-
---        for l in 0 to (CONTROL_LINES-1) loop
---            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_INIT_BIT) <= '0';
---            matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_VALID_BIT) <= '1';
---            matrix_control_in(l)(ACTIVATION_VALID_BIT) <= '1';
---            matrix_control_in(l)(ENABLE_BIT) <= '0';
---            matrix_control_in(l)(PROCESS_TYPE_BIT) <= '0';
---        end loop; 
-        
---        for i in 0 to TEST_WEIGHT_SIZE-1 loop
---            wait until falling_edge(clk); 
---        end loop;
-
---        for l in 0 to (CONTROL_LINES-1) loop
---            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_INIT_BIT) <= '0';
---            matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_VALID_BIT) <= '0';
---            matrix_control_in(l)(ACTIVATION_VALID_BIT) <= '1';
---            matrix_control_in(l)(ENABLE_BIT) <= '0';
---            matrix_control_in(l)(PROCESS_TYPE_BIT) <= '0';
---        end loop; 
-        
---        for i in 0 to TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE-1 loop 
---            wait until falling_edge(clk); 
---        end loop;
-        
---        -- processing phase
-        
---        for l in 0 to (CONTROL_LINES-1) loop
---            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_INIT_BIT) <= '0';
---            matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_VALID_BIT) <= '0';
---            matrix_control_in(l)(ACTIVATION_VALID_BIT) <= '0';
---            matrix_control_in(l)(PROCESS_TYPE_BIT) <= '0';
-            
---            if (l < TEST_WEIGHT_SIZE) then 
---                matrix_control_in(l)(ENABLE_BIT) <= '1';
---            else 
---                matrix_control_in(l)(ENABLE_BIT) <= '0';
---            end if;
-            
---        end loop; 
-        
-        
---        for i in 0 to ((TEST_WEIGHT_SIZE+1)*(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1))-1 loop 
---            wait until falling_edge(clk);  
---        end loop;
-        
---        -- loading phase (second matrix) (unloading first results)
-        
---        for l in 0 to (ACTIVATION_LINES-1) loop 
---            activations_control_bus(l)(BUFFER_INTERFACE_INIT_BIT) <= '0';
---            activations_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
---            activations_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '1';
---            activations_control_bus(l)(BUFFER_INTERFACE_SEND_SIZE_MSB downto BUFFER_INTERFACE_SEND_SIZE_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE,QUEUE_COUNTERS_SIZE));
---        end loop; 
-        
---        for l in 0 to (CONTROL_LINES-1) loop
---            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '1';
---            matrix_control_in(l)(WEIGHT_INIT_BIT) <= '0';
---            matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_VALID_BIT) <= '0';
---            matrix_control_in(l)(ACTIVATION_VALID_BIT) <= '0';
---            matrix_control_in(l)(PROCESS_TYPE_BIT) <= '1';
---            if (l < TEST_WEIGHT_SIZE) then 
---                matrix_control_in(l)(ENABLE_BIT) <= '1';
---            else 
---                matrix_control_in(l)(ENABLE_BIT) <= '0';
---            end if;
---        end loop; 
-
---        wait until falling_edge(clk); 
-        
---        for l in 0 to (ACTIVATION_LINES-1) loop 
---            activations_control_bus(l)(BUFFER_INTERFACE_INIT_BIT) <= '0';
---            activations_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
---            activations_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '0';
---        end loop; 
-        
---        for l in 0 to (CONTROL_LINES-1) loop
---            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_INIT_BIT) <= '0';
---            matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_VALID_BIT) <= '0';
---            matrix_control_in(l)(ACTIVATION_VALID_BIT) <= '1';
---            matrix_control_in(l)(PROCESS_TYPE_BIT) <= '1';
-
---        end loop; 
-        
---        for i in 0 to TEST_MATRIX_SIZE-1 loop
---            wait until falling_edge(clk); 
---        end loop;
-        
-
---        for l in 0 to (CONTROL_LINES-1) loop
---            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_INIT_BIT) <= '0';
---            matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_VALID_BIT) <= '0';
---            matrix_control_in(l)(ACTIVATION_VALID_BIT) <= '0';
-
---            matrix_control_in(l)(PROCESS_TYPE_BIT) <= '1';
---        end loop; 
-        
---        wait until rising_edge(outputs_status_bus(0)(ACCUMULATOR_VALID_BIT));
-        
---        for i in 0 to (DEPTH*4)-1 loop 
---            wait until falling_edge(clk);
---        end loop;
-        
---        for l in 0 to (ACCUMULATION_LINES-1) loop 
---            outputs_control_bus(l)(BUFFER_INTERFACE_INIT_BIT) <= '0';
---            outputs_control_bus(l)(BUFFER_INTERFACE_ADD_BIT) <= '0';
---            outputs_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '1';
---            outputs_control_bus(l)(BUFFER_INTERFACE_SEND_SIZE_MSB downto BUFFER_INTERFACE_SEND_SIZE_LSB) <= STD_LOGIC_VECTOR(to_unsigned(TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,QUEUE_COUNTERS_SIZE));
---        end loop; 
-        
---        wait until falling_edge(clk); 
-        
---        for l in 0 to (ACCUMULATION_LINES-1) loop 
---            outputs_control_bus(l)(BUFFER_INTERFACE_SEND_BIT) <= '0';
---        end loop; 
-
---        wait until falling_edge(clk);
-
---        -- processing phase
-        
---        for l in 0 to (CONTROL_LINES-1) loop
---            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_INIT_BIT) <= '0';
---            matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_VALID_BIT) <= '0';
---            matrix_control_in(l)(ACTIVATION_VALID_BIT) <= '0';
---            matrix_control_in(l)(PROCESS_TYPE_BIT) <= '0';
-            
---            if (l < TEST_WEIGHT_SIZE) then 
---                matrix_control_in(l)(ENABLE_BIT) <= '1';
---            else 
---                matrix_control_in(l)(ENABLE_BIT) <= '0';
---            end if;
-            
---        end loop; 
-        
---        for i in 0 to (TEST_WEIGHT_SIZE*8) loop 
---            wait until falling_edge(clk);  
---        end loop;
-            
---        -- unloading phase 
-        
---        for l in 0 to (CONTROL_LINES-1) loop
---            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_INIT_BIT) <= '0';
---            matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_VALID_BIT) <= '0';
---            matrix_control_in(l)(ACTIVATION_VALID_BIT) <= '0';
---            matrix_control_in(l)(PROCESS_TYPE_BIT) <= '1';
-            
---            if (l < TEST_WEIGHT_SIZE) then 
---                matrix_control_in(l)(ENABLE_BIT) <= '1';
---            else 
---                matrix_control_in(l)(ENABLE_BIT) <= '0';
---            end if;
-            
---        end loop; 
-        
-  
---        wait;
-        
-        
-        
---        -- unloading phase 
-        
---        for l in 0 to (ACCUMULATION_LINES-1) loop 
---            outputs_control_bus(l)(BUFFER_INTERFACE_INIT_BIT) <= '1';  
---        end loop; 
-        
---        for l in 0 to (CONTROL_LINES-1) loop
---            matrix_control_in(l)(ACTIVATION_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_INIT_BIT) <= '0';
---            matrix_control_in(l)(ACCUMULATOR_INIT_BIT) <= '0';
---            matrix_control_in(l)(WEIGHT_VALID_BIT) <= '0';
---            matrix_control_in(l)(ACTIVATION_VALID_BIT) <= '0';
---            matrix_control_in(l)(PROCESS_TYPE_BIT) <= '1';
-            
---            if (l < TEST_WEIGHT_SIZE) then 
---                matrix_control_in(l)(ENABLE_BIT) <= '1';
---            else 
---                matrix_control_in(l)(ENABLE_BIT) <= '0';
---            end if;
-            
---        end loop; 
-        
-  
         wait;
            
     end process; 

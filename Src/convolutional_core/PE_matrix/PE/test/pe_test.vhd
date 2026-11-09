@@ -86,60 +86,30 @@ begin
         -- resetting the PE
         reset <= '1'; 
         enable <= '0';
-        wait until falling_edge(clk);
+        forward_enable <= '0'; 
+        wait until falling_edge(clk);        
         wait until falling_edge(clk);
         
         reset <= '0'; 
-        wait until falling_edge(clk); 
-        
-        -- Forward data test (enable = '0' and forward_enable = '1')
-        enable <= '0';
-        forward_enable <= '0'; 
-        wait until falling_edge(clk);
-        forward_enable <= '1'; 
-        
-        -- sending some values to test their propagation
-        for i in 0 to TEST_WINDOW_SIZE-1 loop
-            if (i<TEST_WEIGHT_SIZE) then 
-                weight_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_WEIGHT(i),DATA_SIZE));
-                activation_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_VECTOR(i),DATA_SIZE));
-            else 
-                forward_enable <= '0';
-            end if; 
-            wait until falling_edge(clk);   
-        end loop; 
-
-        
-        -- Process data test (enable = '1' and forward_enable = '0')
-        
-        -- initialization phase
-        
-        wait until falling_edge(clk);
-        enable <= '1';
-        forward_enable <= '0';
-        weight_in <= (others => '0');
-        activation_in <= (others => '0');
-        accumulator_in <= STD_LOGIC_VECTOR(TO_UNSIGNED(accumulator,ACCUMULATOR_SIZE));
-        
-        -- We set the PE to process a convolution between a 
-        control_in( PE_CONV_SKIP_MSB downto  PE_CONV_SKIP_LSB) <= (others => '0');
-        control_in( PE_CONV_SHIFTS_MSB downto  PE_CONV_SHIFTS_LSB) <= (others => '0');
-        
-        -- we initialize all the internal queues 
         control_in(PE_INIT) <= '1';
         control_in(PE_ACTIVATIONS_CLEAR) <= '1';
+        control_in(PE_WEIGHTS_CLEAR) <= '1'; 
         control_in(PE_WEIGHT_VALID) <= '0';
         control_in(PE_ACTIVATION_VALID) <= '0';
-        control_in(PE_PROCESS_START) <= '0';
-        control_in(PE_PROCESS_TYPE) <= '0';
+        
+        status_in(PE_ACTIVE) <= '0';
         status_in(PE_OUTPUT_VALID) <= '0';
-        
+
         wait until falling_edge(clk); 
+
         
-        -- Loading phase
-        -- We signal the PE to receive data in the weight and activation queues
+        -- Forward data test (enable = '0' and forward_enable = '1')
+        
+        forward_enable <= '1'; 
+        
         control_in(PE_INIT) <= '0';
         control_in(PE_ACTIVATIONS_CLEAR) <= '0';
+        control_in(PE_WEIGHTS_CLEAR) <= '0'; 
         control_in(PE_WEIGHT_VALID) <= '1';
         control_in(PE_ACTIVATION_VALID) <= '1';
         
@@ -158,10 +128,31 @@ begin
                 
                 wait until falling_edge(clk);   
         end loop; 
+
         
+        -- Process data test (enable = '1' and forward_enable = '0')
+        
+        -- initialization phase
+        
+        enable <= '1';
+        forward_enable <= '0';
+        weight_in <= (others => '0');
+        activation_in <= (others => '0');
+        
+        -- We set the PE to process a convolution between a 
+        control_in( PE_CONV_SKIP_MSB downto  PE_CONV_SKIP_LSB) <= (others => '0');
+        control_in( PE_CONV_SHIFTS_MSB downto  PE_CONV_SHIFTS_LSB) <= (others => '0');
+        
+        -- we initialize all the internal queues 
+        control_in(PE_INIT) <= '0';
+        control_in(PE_ACTIVATIONS_CLEAR) <= '0';
         control_in(PE_WEIGHT_VALID) <= '0';
         control_in(PE_ACTIVATION_VALID) <= '0';
+        control_in(PE_PROCESS_START) <= '0';
+        control_in(PE_PROCESS_TYPE) <= '0';
         
+        wait until falling_edge(clk); 
+                
         -- Execution phase
         
         -- We send a process start command to start the convolution of three elements
@@ -182,16 +173,18 @@ begin
         wait until falling_edge(clk);
         wait until falling_edge(clk);
         wait until falling_edge(clk);
-        wait until rising_edge(status_out(PE_STATUS_WAITING));
+        wait until rising_edge(status_out(PE_READY));
         wait until falling_edge(clk);
         
         -- simulating a buffer stall 
         for i in 0 to 10 loop 
             wait until falling_edge(clk); 
         end loop;
+        enable <= '0';
         
         -- Second loading phase
 
+        forward_enable <= '1';
         control_in(PE_ACTIVATION_VALID) <= '1';
         for i in 0 to TEST_VECTOR_SIZE-TEST_WINDOW_SIZE-1 loop
                 -- The second hald of the activation vector is loaded in the activation queue
@@ -201,6 +194,9 @@ begin
         control_in(PE_ACTIVATION_VALID) <= '0';
         
         -- We send a process start command to start the convolution of three elements
+        forward_enable <= '0';
+        enable <= '1';
+        
         control_in( PE_CONV_SHIFTS_MSB downto  PE_CONV_SHIFTS_LSB) <= STD_LOGIC_VECTOR(to_unsigned(3,CONV_SHIFTS_BITS));
         control_in( PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB) <= STD_LOGIC_VECTOR(to_unsigned(1,CONV_SKIP_BITS));
         control_in(PE_PROCESS_START) <= '1';

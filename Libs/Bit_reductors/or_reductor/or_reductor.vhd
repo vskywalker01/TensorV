@@ -30,9 +30,17 @@ begin
         level_bit: for b in 0 to DATA_SIZE-1 generate 
             or_port: if (b mod STEP = 0) generate
                 constant BIT1: INTEGER := b; 
-                constant BIT2: INTEGER := (b+DEPTH) when ((b+DEPTH) < DATA_SIZE) else BIT1;
+                constant BIT2: INTEGER := b+DEPTH;
             begin             
-                levels(l+1)(BIT1) <= levels(l)(BIT1) or levels(l)(BIT2);
+                valid_bit: if BIT2 < DATA_SIZE generate
+                begin
+                    levels(l+1)(b) <= levels(l)(BIT1) or levels(l)(BIT2);
+                end generate;
+    
+                invalid_bit: if BIT2 >= DATA_SIZE generate
+                begin
+                    levels(l+1)(b) <= levels(l)(BIT1);
+                end generate;
             end generate;        
         end generate;
     end generate; 
