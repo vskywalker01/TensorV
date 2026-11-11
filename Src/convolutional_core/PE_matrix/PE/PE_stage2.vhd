@@ -80,9 +80,8 @@ begin
     stage2: process(clk) is 
     begin 
         if (rising_edge(clk)) then 
-            if (reset = '1' or status_forward_in(PE_ACTIVE) = '0') then 
+            if (reset = '1') then 
                 
-                control_forward_out <= (others => '0');
                 reduction_valid_out <= '0';
                 reduction_type_out <= '0';
                 
@@ -93,10 +92,22 @@ begin
                 status_forward_out(PE_STATUS_TYPE) <= '0';
                 status_forward_out(PE_STATUS_WAITING) <= '0';
                 
+                control_forward_out(PE_INIT) <= '1';
+                control_forward_out(PE_PROCESS_START) <= '0';
+                control_forward_out(PE_PROCESS_TYPE) <= '0';
+                control_forward_out(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB) <= (others => '0');
+                control_forward_out(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB) <= (others => '0');
+                
             else
-
+                
                 -- Matrix forward lines
-                control_forward_out <= control_forward_in;
+                control_forward_out(PE_INIT) <= control_forward_in(PE_INIT);
+                control_forward_out(PE_PROCESS_START) <= control_forward_in(PE_PROCESS_START);
+                control_forward_out(PE_PROCESS_TYPE) <= control_forward_in(PE_PROCESS_TYPE);
+
+                control_forward_out(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB) <= control_forward_in(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB);
+                control_forward_out(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB) <= control_forward_in(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB);
+               
                 status_forward_out <= status_forward_in;
                 accumulator_forward_out <= accumulator_forward_in;
                 
@@ -142,9 +153,17 @@ begin
             if (reset = '1') then 
                 weight_forward_out <= (others => '0');
                 activation_forward_out <= (others => '0');
+                control_forward_out(PE_ACTIVATIONS_CLEAR) <= '0';
+                control_forward_out(PE_WEIGHTS_CLEAR) <= '0';
+                control_forward_out(PE_WEIGHT_VALID) <= '0';
+                control_forward_out(PE_ACTIVATION_VALID) <= '0';
             else 
                 weight_forward_out <= weight_forward_in;   
                 activation_forward_out <= activation_forward_in;
+                control_forward_out(PE_ACTIVATIONS_CLEAR) <= control_forward_in(PE_ACTIVATIONS_CLEAR);
+                control_forward_out(PE_WEIGHTS_CLEAR) <= control_forward_in(PE_WEIGHTS_CLEAR);
+                control_forward_out(PE_WEIGHT_VALID) <=  control_forward_in(PE_WEIGHT_VALID);
+                control_forward_out(PE_ACTIVATION_VALID) <= control_forward_in(PE_ACTIVATION_VALID);
             end if; 
         end if;
      end process;

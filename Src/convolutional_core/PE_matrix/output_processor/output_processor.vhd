@@ -2,12 +2,11 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use work.PE_matrix_parameters.ALL;
 
-
 entity output_processor is
     Port (
-        clk: in STD_LOGIC; 
-        reset: in STD_LOGIC; 
-        enable: in STD_LOGIC; 
+        clk:            in STD_LOGIC; 
+        reset:          in STD_LOGIC; 
+        enable:         in STD_LOGIC; 
         
         bias_in:    in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
         data_in:    in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);

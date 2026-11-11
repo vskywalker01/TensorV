@@ -49,12 +49,7 @@ architecture Behavioral of PE_matrix is
     signal bias_interconnect_valid:                                                 MATRIX_INTERCONNECT_BIAS_valid;
     signal outputs_interconnect_ports:                                              MATRIX_INTERCONNECT_OUTPUTS;
     signal outputs_interconnect_valid:                                              MATRIX_INTERCONNECT_OUTPUTS_VALID; 
-    
-    signal output_queues_send:                                                      STD_LOGIC;                                                       
-    signal weight_queues_send:                                                      STD_LOGIC; 
-    signal activation_queues_send:                                                  STD_LOGIC; 
-    signal bias_queues_send:                                                        STD_LOGIC; 
-    
+        
     signal output_queues_size_send:                                                 STD_LOGIC_VECTOR(BUFFER_SIZE_BITS-1 downto 0);
     signal weight_queues_size_send:                                                 STD_LOGIC_VECTOR(BUFFER_SIZE_BITS-1 downto 0);
     signal activation_queues_size_send:                                             STD_LOGIC_VECTOR(BUFFER_SIZE_BITS-1 downto 0);
@@ -69,10 +64,11 @@ architecture Behavioral of PE_matrix is
     signal weight_enable_lines:                 STD_LOGIC_VECTOR(WEIGHT_LINES-1 downto 0); 
     signal column_enable_lines:                 STD_LOGIC_VECTOR(DEPTH-1 downto 0);
     
-    signal activation_buffers_enable_lines:     STD_LOGIC_VECTOR(ACTIVATION_LINES-1 downto 0);
-    signal weight_buffers_enable_lines:         STD_LOGIC_VECTOR(WEIGHT_LINES-1 downto 0);
-    signal bias_buffers_enable_lines:           STD_LOGIC_VECTOR(ACCUMULATION_LINES-1 downto 0);
-    signal output_buffers_enable_lines:         STD_LOGIC_VECTOR(ACCUMULATION_LINES-1 downto 0);
+    signal activation_buffers_send_lines:       STD_LOGIC_VECTOR(ACTIVATION_LINES-1 downto 0);
+    signal weight_buffers_send_lines:           STD_LOGIC_VECTOR(WEIGHT_LINES-1 downto 0);
+    signal bias_buffers_send_lines:             STD_LOGIC_VECTOR(ACCUMULATION_LINES-1 downto 0);
+    signal output_buffers_send_lines:           STD_LOGIC_VECTOR(ACCUMULATION_LINES-1 downto 0);
+    signal output_processor_bias_enable_lines:  STD_LOGIC_VECTOR(ACCUMULATION_LINES-1 downto 0);
     
     -- matrix status lines
     
@@ -184,28 +180,28 @@ begin
             Port map (
                 clk => clk, 
                 reset => reset,
-                enable => output_buffers_enable_lines(i),
+                enable => '1',
                 init => matrix_buffers_control_bus(MATRIX_BUFFERS_BIAS_INIT),
                 add_in => matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_BIAS_LSB+i),
                 
                 step_in =>  status_interconnect_ports_out(0,i)(PE_OUTPUT_VALID),
-                send_in =>  bias_queues_send,
+                send_in =>  bias_buffers_send_lines(i),
                 counter_in => bias_queues_size_send,
                 data_in => bias_data_in,
                 data_out => bias_interconnect_ports(i),
-                valid_out => bias_interconnect_valid(i),
+                valid_out => open,--bias_interconnect_valid(i),
                 ready_out => matrix_buffers_status_bus(MATRIX_BUFFERS_STATUS_BIAS_READY_LSB+i)
             );
-            
+           
         output_PE: output_processor 
             Port map (
                 clk => clk, 
                 reset => reset, 
-                enable => output_buffers_enable_lines(i),
+                enable => '1',
                 bias_in =>  bias_interconnect_ports(i),
                 data_in => accumulator_interconnect_ports_out(0,i),
                 shift_in => matrix_current_requantization_shift,
-                bias_valid_in => bias_interconnect_valid(i),
+                bias_valid_in =>  output_processor_bias_enable_lines(i),
                 data_valid_in => status_interconnect_ports_out(0,i)(PE_OUTPUT_VALID),
                             
                 data_out => outputs_interconnect_ports(i),
@@ -220,12 +216,12 @@ begin
             Port map (
                 clk => clk, 
                 reset => reset,
-                enable => output_buffers_enable_lines(i),
+                enable => matrix_buffers_control_bus(MATRIX_BUFFERS_GET_OUTPUTS_LSB+i),
                 init => matrix_buffers_control_bus(MATRIX_BUFFERS_OUTPUTS_INIT),
                 add_in => outputs_interconnect_valid(i),
                 
-                step_in =>  matrix_buffers_control_bus(MATRIX_BUFFERS_STEP_OUTPUTS_LSB+i),
-                send_in =>  output_queues_send,
+                step_in => matrix_buffers_control_bus(MATRIX_BUFFERS_GET_OUTPUTS_LSB+i),
+                send_in =>  output_buffers_send_lines(i),
                 counter_in =>  output_queues_size_send,
                 data_in => outputs_interconnect_ports(i),
                 data_out => outputs_data_out,
@@ -247,11 +243,11 @@ begin
             Port map (
                 clk => clk, 
                 reset => reset,
-                enable => weight_buffers_enable_lines(i),
+                enable => '1',
                 init => matrix_buffers_control_bus(MATRIX_BUFFERS_WEIGHTS_INIT),
                 add_in => matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_WEIGHTS_LSB+i),
                 step_in =>  '1',
-                send_in =>  weight_queues_send,
+                send_in =>  weight_buffers_send_lines(i),
                 counter_in =>  weight_queues_size_send,
                 data_in => weights_data_in,
                 data_out => weight_interconnect_ports_in(i,0),
@@ -273,11 +269,11 @@ begin
                 Port map (
                     clk => clk, 
                     reset => reset,
-                    enable => activation_buffers_enable_lines(i),
+                    enable => '1',
                     init => matrix_buffers_control_bus(MATRIX_BUFFERS_ACTIVATIONS_INIT),
                     add_in =>  matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_ACTIVATIONS_LSB+i),
                     step_in =>  '1',
-                    send_in =>  activation_queues_send,
+                    send_in =>  activation_buffers_send_lines(i),
                     counter_in => activation_queues_size_send,
                     data_in => activations_data_in,
                     data_out => activation_interconnect_ports_in(ROW,COL),
@@ -294,11 +290,11 @@ begin
                 Port map (
                     clk => clk, 
                     reset => reset,
-                    enable => activation_buffers_enable_lines(i),
+                    enable => '1',
                     init => matrix_buffers_control_bus(MATRIX_BUFFERS_ACTIVATIONS_INIT),
                     add_in =>  matrix_buffers_control_bus(MATRIX_BUFFERS_ADD_ACTIVATIONS_LSB+i),
                     step_in =>  control_interconnect_ports_in(ROW,COL)(PE_ACTIVATION_VALID),
-                    send_in =>  activation_queues_send,
+                    send_in =>  activation_buffers_send_lines(i),
                     counter_in => activation_queues_size_send,
                     data_in => activations_data_in,
                     data_out => activation_interconnect_ports_in(ROW,COL),
@@ -373,22 +369,18 @@ begin
                 weight_queues_size_send <= (others => '0');
                 activation_queues_size_send <= (others => '0');
                 bias_queues_size_send <= (others => '0');
-                output_buffers_enable_lines <= (others => '0');
-                activation_buffers_enable_lines <= (others => '0');
-                weight_buffers_enable_lines <= (others => '0');
-                bias_buffers_enable_lines <= (others => '0');
-                bias_queues_send <= '0';
-                activation_queues_send <= '0';
-                weight_queues_send <= '0'; 
-                output_queues_send <= '0';
-                
+                output_buffers_send_lines <= (others => '0');
+                activation_buffers_send_lines <= (others => '0');
+                weight_buffers_send_lines <= (others => '0');
+                bias_buffers_send_lines <= (others => '0');
+                output_processor_bias_enable_lines <= (others => '0');
+                 
                 for r in 0 to DEPTH-1 loop 
                     for c in 0 to DEPTH-1 loop 
                             enables_matrix(r,c) <= '0';
                             forward_enables_matrix(r,c) <= '0';
                     end loop; 
                 end loop;
-        
                 
             else
                 if (matrix_control_bus(MATRIX_CONTROL_COMMAND_VALID) = '1') then 
@@ -440,27 +432,20 @@ begin
 
                     if (matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) = MATRIX_COMMAND_LOAD) then 
                         if (matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) = '1') then 
-                            activation_queues_send <= '1';
-                            activation_buffers_enable_lines <= activation_forward_enable_lines; 
+                            activation_buffers_send_lines <= activation_forward_enable_lines; 
                             if (ACTIVATION_MATRIX_SIZE_BITS < BUFFER_SIZE_BITS) then  
+                            
                                 activation_queues_size_send(BUFFER_SIZE_BITS-1 downto ACTIVATION_MATRIX_SIZE_BITS) <= (others => '0');
                             end if;
                             activation_queues_size_send(ACTIVATION_MATRIX_SIZE_BITS-1 downto 0) <= matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_X_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_X_LSB);
-                        else 
-                            activation_queues_send <= '0';
-                            activation_buffers_enable_lines <= (others => '0');
                         end if; 
                         if (matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) = '1') then 
-                            weight_queues_send <= '1';
-                            weight_buffers_enable_lines <= weight_enable_lines;
+                            weight_buffers_send_lines <= weight_enable_lines;
                             
                             if (WEIGHT_MATRIX_SIZE_BITS < BUFFER_SIZE_BITS) then  
                                 weight_queues_size_send(BUFFER_SIZE_BITS-1 downto WEIGHT_MATRIX_SIZE_BITS) <= (others => '0');
                             end if;
                             weight_queues_size_send(WEIGHT_MATRIX_SIZE_BITS-1 downto 0) <= matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_X_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_X_LSB);
-                        else 
-                            weight_queues_send <= '0';
-                            weight_buffers_enable_lines <= (others => '0');
                         end if; 
 
                         for r in 0 to DEPTH-1 loop 
@@ -474,19 +459,16 @@ begin
                                                 
                         if (matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) = MATRIX_COMMAND_UNLOAD) then
                             if (matrix_control_bus(MATRIX_CONTROL_LOAD_BIAS_FLAG) = '1') then 
-                                bias_queues_send <= '1';
-                                bias_buffers_enable_lines <= column_enable_lines; 
+                                bias_buffers_send_lines <= column_enable_lines; 
                                 if (CONV_SHIFTS_BITS < BUFFER_SIZE_BITS) then  
                                     bias_queues_size_send(BUFFER_SIZE_BITS-1 downto CONV_SHIFTS_BITS) <= (others => '0');
                                 end if;
                                 bias_queues_size_send(CONV_SHIFTS_BITS-1 downto 0) <= matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB);
-                            else 
-                                bias_queues_send <= '0';
-                                bias_buffers_enable_lines <= (others => '0');
                             end if; 
-                            output_buffers_enable_lines <= column_enable_lines;                        
-                            output_queues_send <= '1';
                             
+                            output_buffers_send_lines <= column_enable_lines;                        
+                            output_processor_bias_enable_lines <= column_enable_lines;
+                             
                             if (CONV_SHIFTS_BITS < BUFFER_SIZE_BITS) then  
                                 output_queues_size_send(BUFFER_SIZE_BITS-1 downto CONV_SHIFTS_BITS) <= (others => '0');
                             end if;
@@ -508,15 +490,10 @@ begin
                                     forward_enables_matrix(r,c) <= '0';
                             end loop; 
                         end loop;
-                        output_buffers_enable_lines <= (others => '0');
-                        activation_buffers_enable_lines <= (others => '0');
-                        weight_buffers_enable_lines <= (others => '0');
-                        bias_buffers_enable_lines <= (others => '0');
-                        
-                        bias_queues_send <= '0';
-                        activation_queues_send <= '0';
-                        weight_queues_send <= '0'; 
-                        output_queues_send <= '0';
+                        output_buffers_send_lines <= (others => '0');
+                        activation_buffers_send_lines <= (others => '0');
+                        weight_buffers_send_lines <= (others => '0');
+                        bias_buffers_send_lines <= (others => '0');
                     end if; 
                 else 
                     control_interconnect_ports_in(0,0)(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB) <= (others => '0');
@@ -527,10 +504,10 @@ begin
                     control_interconnect_ports_in(0,0)(PE_PROCESS_START) <= '0';
                     control_interconnect_ports_in(0,0)(PE_PROCESS_TYPE) <= '0';
                     
-                    bias_queues_send <= '0';
-                    activation_queues_send <= '0';
-                    weight_queues_send <= '0'; 
-                    output_queues_send <= '0';
+                    output_buffers_send_lines <= (others => '0');
+                    activation_buffers_send_lines <= (others => '0');
+                    weight_buffers_send_lines <= (others => '0');
+                    bias_buffers_send_lines <= (others => '0');
                 end if; 
 
                 matrix_status_bus(MATRIX_STATUS_LINES_READY_MSB downto MATRIX_STATUS_LINES_READY_LSB) <= ready_lines;

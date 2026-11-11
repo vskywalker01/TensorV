@@ -8,8 +8,8 @@ end buffer_unit_test;
 
 architecture Behavioral of buffer_unit_test is
     constant DATA_SIZE: INTEGER := 8;
-    constant QUEUE_SIZE: INTEGER := 16;
-    constant BUFFER_SIZE_BITS: INTEGER := 4;
+    constant QUEUE_SIZE: INTEGER := 8;
+    constant BUFFER_SIZE_BITS: INTEGER := 3;
 
     component buffer_unit is
         Generic (
@@ -74,7 +74,7 @@ begin
     begin 
         reset <= '1'; 
         wait until rising_edge(clk);
-        counter_in <= STD_LOGIC_VECTOR(to_unsigned(10, BUFFER_SIZE_BITS));
+        counter_in <= STD_LOGIC_VECTOR(to_unsigned(7, BUFFER_SIZE_BITS));
         
         reset <= '0'; 
         enable <= '1';
@@ -98,14 +98,10 @@ begin
         init <= '0'; 
         add_in <= '0';
         send_in <= '1';
-        
+        step_in <= '1';
         wait until rising_edge(clk);
         send_in <= '0';
-        
-        
-        add_in <= '0'; 
-        step_in <= '1';
-        
+      
         for i in 0 to 2 loop
             wait until rising_edge(clk);
         end loop;
@@ -117,6 +113,49 @@ begin
         end loop;
         
         step_in <= '1';
+        
+        for i in 0 to 5 loop 
+            wait until rising_edge(clk); 
+        end loop; 
+        init <= '1'; 
+        
+        wait until rising_edge(clk); 
+        init <= '0';
+        enable <= '0';
+        
+        counter_in <= (others => '0');
+        send_in <= '1';
+        step_in <= '1'; 
+        
+        wait until rising_edge(clk); 
+        send_in <= '0';
+        step_in <= '0'; 
+        
+        
+        wait until rising_edge(clk);
+        
+        enable <= '1';
+        send_in <= '1';
+        counter_in <= STD_LOGIC_VECTOR(to_unsigned(5, BUFFER_SIZE_BITS));
+        
+        wait until rising_edge(clk);
+        send_in <= '0';
+        
+        step_in <= '1';
+        add_in <= '1';
+        init <= '0';
+        for i in 0 to 9 loop
+            data_in <= STD_LOGIC_VECTOR(to_unsigned(counter, DATA_SIZE));
+            counter := counter + 1;
+            wait until rising_edge(clk);
+        end loop;
+        add_in <= '0';
+                
+        wait until rising_edge(clk);
+        wait until rising_edge(clk);
+        step_in <= '1';
+        
+        
         
         wait;
         

@@ -148,141 +148,156 @@ begin
                 output_tail <= (others => '0');
                 output_head <= (others => '0');
                 row_done_out <= '0'; 
+                
+                control_forward_out(PE_INIT) <= '1';
+                control_forward_out(PE_PROCESS_START) <= '0';
+                control_forward_out(PE_PROCESS_TYPE) <= '0';
+                control_forward_out(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB) <= (others => '0');
+                control_forward_out(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB) <= (others => '0');
 
-            elsif (enable = '1') then 
+            else 
+                control_forward_out(PE_INIT) <= '0';
+                if (enable = '1') then 
                 
-                ----- accumulation queue management ------
-                
-                -- if there is an output coming from the stage 3 and the output queue is not full,the new element is inserted in the register file.
-                if (accumulator_loopback_valid_in = '1' and output_full <= '0') then 
-                    output_tail <= output_tail +1; 
-                    output_register_file(to_integer(output_tail(OUTPUT_QUEUE_SIZE_BITS - 1 downto 0))) <= accumulator_loopback_in;
-                end if; 
-                
-                -- if the PE receives an unloading command, the process counter is initialized with the number of accumulations to process. 
-                if (control_forward_in(PE_PROCESS_START) = '1' and control_forward_in(PE_PROCESS_TYPE)= '1') then 
-                    process_counter <= UNSIGNED(control_forward_in(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB));
-                    process_type <= '1';
-                
-                
-                -- if the PE is in an unloading phase, it waits for the accumulation from the past process. 
-                elsif (process_counter > 0 and process_type = '1') then 
-                
-                    -- if the accumulation queue is not empty, the WAITING flag is resetted 
-                    if (output_empty = '0') then 
+                    ----- accumulation queue management ------
                     
-                        -- The process can continue if the past PE is not active or the flag OUTPUT_VALID = '1'
-                        if ((status_forward_in(PE_OUTPUT_VALID) = '1' and status_forward_in(PE_ACTIVE)='1') or status_forward_in(PE_ACTIVE)='0') then 
-                            process_counter <= process_counter-1; 
-                            accumulator_queue_out <= output_register_file(to_integer(output_head(OUTPUT_QUEUE_SIZE_BITS - 1 downto 0))); 
-                            output_head <= output_head + 1;  
-                            status_forward_out(PE_OUTPUT_VALID) <= '1';
+                    -- if there is an output coming from the stage 3 and the output queue is not full,the new element is inserted in the register file.
+                    if (accumulator_loopback_valid_in = '1' and output_full <= '0') then 
+                        output_tail <= output_tail +1; 
+                        output_register_file(to_integer(output_tail(OUTPUT_QUEUE_SIZE_BITS - 1 downto 0))) <= accumulator_loopback_in;
+                    end if; 
+                    
+                    -- if the PE receives an unloading command, the process counter is initialized with the number of accumulations to process. 
+                    if (control_forward_in(PE_PROCESS_START) = '1' and control_forward_in(PE_PROCESS_TYPE)= '1') then 
+                        process_counter <= UNSIGNED(control_forward_in(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB));
+                        process_type <= '1';
+                    
+                    
+                    -- if the PE is in an unloading phase, it waits for the accumulation from the past process. 
+                    elsif (process_counter > 0 and process_type = '1') then 
+                    
+                        -- if the accumulation queue is not empty, the WAITING flag is resetted 
+                        if (output_empty = '0') then 
+                        
+                            -- The process can continue if the past PE is not active or the flag OUTPUT_VALID = '1'
+                            if ((status_forward_in(PE_OUTPUT_VALID) = '1' and status_forward_in(PE_ACTIVE)='1') or status_forward_in(PE_ACTIVE)='0') then 
+                                process_counter <= process_counter-1; 
+                                accumulator_queue_out <= output_register_file(to_integer(output_head(OUTPUT_QUEUE_SIZE_BITS - 1 downto 0))); 
+                                output_head <= output_head + 1;  
+                                status_forward_out(PE_OUTPUT_VALID) <= '1';
+                            else 
+                                status_forward_out(PE_OUTPUT_VALID) <= '0';
+                            end if;
+    
+                            status_forward_out(PE_STATUS_WAITING) <= '0';
                         else 
                             status_forward_out(PE_OUTPUT_VALID) <= '0';
-                        end if;
-
-                        status_forward_out(PE_STATUS_WAITING) <= '0';
-                    else 
-                        status_forward_out(PE_OUTPUT_VALID) <= '0';
-                        status_forward_out(PE_STATUS_WAITING) <= '1';
+                            status_forward_out(PE_STATUS_WAITING) <= '1';
+                        end if; 
                     end if; 
-                end if; 
-                
-                
-                
-                ----- convolutional queues management -----
-                
-                -- if the PE receives a process command, the process counter is initialized with the number of rows to compute 
-                if (control_forward_in(PE_PROCESS_START) = '1' and control_forward_in(PE_PROCESS_TYPE)= '0') then 
-                    process_counter <= UNSIGNED(control_forward_in(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB));
-                    process_type <= '0';
                     
-                    -- the temporary registers are initialized for the new process 
-                    current_weight_tail <= weight_tail; 
-                    current_activation_head <= activation_head; 
-                    current_skip <= UNSIGNED(control_forward_in(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB));
-                    skip <= UNSIGNED(control_forward_in(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB));
                     
-                -- if the PE is processing a row, the queue temporary pointers are updated and two values are gathered from the data queues
-                elsif (process_counter > 0 and process_type = '0') then 
-                
-                    -- A WEIGHTS_CLEAR/ACTIVATIONS_CLEAR flag halts the process execution 
-                    if (control_forward_in(PE_WEIGHTS_CLEAR) = '1' or control_forward_in(PE_ACTIVATIONS_CLEAR)='1') then 
-                        process_counter <= (others => '0');
-                        status_forward_out(PE_STATUS_WAITING) <= '0';
-                        -- if a WEIGHT_CLEAR command is received, the weight queue is cleared
-                        if (control_forward_in(PE_WEIGHTS_CLEAR) = '1') then 
-                            current_weight_head <= (others => '0');
-                            current_weight_tail <= (others => '0');
-                        end if;
+                    
+                    ----- convolutional queues management -----
+                    
+                    -- if the PE receives a process command, the process counter is initialized with the number of rows to compute 
+                    if (control_forward_in(PE_PROCESS_START) = '1' and control_forward_in(PE_PROCESS_TYPE)= '0') then 
+                        process_counter <= UNSIGNED(control_forward_in(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB));
+                        process_type <= '0';
                         
-                        -- if an ACTIVATION_CLEAR command is received, the activation queue is cleared 
-                        if (control_forward_in(PE_ACTIVATIONS_CLEAR)='1') then
-                            current_activation_head <= (others => '0');  
-                            activation_head <= (others => '0');
-                        end if;
-                        
-                            
-                    -- If the current_skip > 0 and current_weight_head > 0, the PE is in the convolutional phase with dropout: 
-                    -- the PE reads one element from the weight queue and one element from the activation queue
-                    -- the element obtained from the activation queue is also discarded because the striding (not required for the next kernel shift) 
-                   
-                    elsif (current_skip > 0 and current_weight_head < current_weight_tail and activation_waiting = '0') then 
-                        activation_queue_out <= activation_register_file(to_integer(current_activation_head(ACTIVATION_QUEUE_SIZE_BITS - 1 downto 0))); 
-                        weight_queue_out <= weight_register_file(to_integer(current_weight_head(WEIGHT_QUEUE_SIZE_BITS-1 downto 0)));
-                        
-                        current_activation_head <= current_activation_head + 1; 
-                        activation_head <= activation_head + 1;
-                        current_weight_head <= current_weight_head + 1;
-                        current_skip <= current_skip - 1;
-                        status_forward_out(PE_STATUS_WAITING) <= '0';
-    
-                    
-                    -- If the current_skip > 0 and current_weight_head > 0, the PE is in the convolutional phase: 
-                    -- the PE reads one element from the weight queue and one element from the activation queue
-                    
-                    elsif (current_skip = 0 and current_weight_head < current_weight_tail and activation_waiting = '0') then 
-                        activation_queue_out <= activation_register_file(to_integer(current_activation_head(ACTIVATION_QUEUE_SIZE_BITS - 1 downto 0))); 
-                        weight_queue_out <= weight_register_file(to_integer(current_weight_head(WEIGHT_QUEUE_SIZE_BITS-1 downto 0)));
-                        current_activation_head <= current_activation_head + 1; 
-                        current_weight_head <= current_weight_head + 1;
-                        status_forward_out(PE_STATUS_WAITING) <= '0';
-                    
-                    -- if the current_skip = 0 and the current_weight_head = 0, the PE has filtered one part of the activation
-                    -- The current process counter is decremented, the current_state registers are resetted in order to prepare for the next shift. 
-                    elsif (current_weight_head = current_weight_tail) then 
-                        process_counter <= process_counter - 1; 
+                        -- the temporary registers are initialized for the new process 
+                        current_weight_tail <= weight_tail; 
                         current_activation_head <= activation_head; 
-                        current_weight_head <= (others => '0');
-                        current_skip <= skip; 
-                        process_counter <= process_counter - 1;
-                        status_forward_out(PE_STATUS_WAITING) <= '0';
-                    else
+                        current_skip <= UNSIGNED(control_forward_in(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB));
+                        skip <= UNSIGNED(control_forward_in(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB));
                         
-                        -- if the activation queue is empty, the WAITING flag is set  
-                        status_forward_out(PE_STATUS_WAITING) <= '1';
-                        
-                    end if; 
-                end if;
-                
-                -- propagation of the process type and the ACTIVE state 
-                status_forward_out(PE_STATUS_TYPE) <= process_type; 
-                status_forward_out(PE_ACTIVE) <= '1';
-                
-                -- If the counter reaches 0, the PE has terminated its execution
-                if (process_counter = 0) then 
-                    status_forward_out(PE_READY) <= '1';
-                else 
-                    status_forward_out(PE_READY) <= '0';
-                end if;
+                    -- if the PE is processing a row, the queue temporary pointers are updated and two values are gathered from the data queues
+                    elsif (process_counter > 0 and process_type = '0') then 
+                    
+                        -- A WEIGHTS_CLEAR/ACTIVATIONS_CLEAR flag halts the process execution 
+                        if (control_forward_in(PE_WEIGHTS_CLEAR) = '1' or control_forward_in(PE_ACTIVATIONS_CLEAR)='1') then 
+                            process_counter <= (others => '0');
+                            status_forward_out(PE_STATUS_WAITING) <= '0';
+                            -- if a WEIGHT_CLEAR command is received, the weight queue is cleared
+                            if (control_forward_in(PE_WEIGHTS_CLEAR) = '1') then 
+                                current_weight_head <= (others => '0');
+                                current_weight_tail <= (others => '0');
+                            end if;
+                            
+                            -- if an ACTIVATION_CLEAR command is received, the activation queue is cleared 
+                            if (control_forward_in(PE_ACTIVATIONS_CLEAR)='1') then
+                                current_activation_head <= (others => '0');  
+                                activation_head <= (others => '0');
+                            end if;
+                            
                                 
-
-                -- Propagation of the signals to the next stages
-                accumulator_forward_out <= accumulator_forward_in;
-                control_forward_out <= control_forward_in;
-                row_done_out <= row_done;
-               
-            end if;              
+                        -- If the current_skip > 0 and current_weight_head > 0, the PE is in the convolutional phase with dropout: 
+                        -- the PE reads one element from the weight queue and one element from the activation queue
+                        -- the element obtained from the activation queue is also discarded because the striding (not required for the next kernel shift) 
+                       
+                        elsif (current_skip > 0 and current_weight_head < current_weight_tail and activation_waiting = '0') then 
+                            activation_queue_out <= activation_register_file(to_integer(current_activation_head(ACTIVATION_QUEUE_SIZE_BITS - 1 downto 0))); 
+                            weight_queue_out <= weight_register_file(to_integer(current_weight_head(WEIGHT_QUEUE_SIZE_BITS-1 downto 0)));
+                            
+                            current_activation_head <= current_activation_head + 1; 
+                            activation_head <= activation_head + 1;
+                            current_weight_head <= current_weight_head + 1;
+                            current_skip <= current_skip - 1;
+                            status_forward_out(PE_STATUS_WAITING) <= '0';
+        
+                        
+                        -- If the current_skip > 0 and current_weight_head > 0, the PE is in the convolutional phase: 
+                        -- the PE reads one element from the weight queue and one element from the activation queue
+                        
+                        elsif (current_skip = 0 and current_weight_head < current_weight_tail and activation_waiting = '0') then 
+                            activation_queue_out <= activation_register_file(to_integer(current_activation_head(ACTIVATION_QUEUE_SIZE_BITS - 1 downto 0))); 
+                            weight_queue_out <= weight_register_file(to_integer(current_weight_head(WEIGHT_QUEUE_SIZE_BITS-1 downto 0)));
+                            current_activation_head <= current_activation_head + 1; 
+                            current_weight_head <= current_weight_head + 1;
+                            status_forward_out(PE_STATUS_WAITING) <= '0';
+                        
+                        -- if the current_skip = 0 and the current_weight_head = 0, the PE has filtered one part of the activation
+                        -- The current process counter is decremented, the current_state registers are resetted in order to prepare for the next shift. 
+                        elsif (current_weight_head = current_weight_tail) then 
+                            process_counter <= process_counter - 1; 
+                            current_activation_head <= activation_head; 
+                            current_weight_head <= (others => '0');
+                            current_skip <= skip; 
+                            process_counter <= process_counter - 1;
+                            status_forward_out(PE_STATUS_WAITING) <= '0';
+                        else
+                            
+                            -- if the activation queue is empty, the WAITING flag is set  
+                            status_forward_out(PE_STATUS_WAITING) <= '1';
+                            
+                        end if; 
+                    end if;
+                    
+                    -- propagation of the process type and the ACTIVE state 
+                    status_forward_out(PE_STATUS_TYPE) <= process_type; 
+                    status_forward_out(PE_ACTIVE) <= '1';
+                    
+                    -- If the counter reaches 0, the PE has terminated its execution
+                    if (process_counter = 0) then 
+                        status_forward_out(PE_READY) <= '1';
+                    else 
+                        status_forward_out(PE_READY) <= '0';
+                    end if;
+                                    
+    
+                    -- Propagation of the signals to the next stages
+                    accumulator_forward_out <= accumulator_forward_in;
+                    row_done_out <= row_done;
+                    
+                    control_forward_out(PE_INIT) <= '0';
+                    control_forward_out(PE_PROCESS_START) <= control_forward_in(PE_PROCESS_START);
+                    control_forward_out(PE_PROCESS_TYPE) <= control_forward_in(PE_PROCESS_TYPE);
+    
+                    control_forward_out(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB) <= control_forward_in(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB);
+                    control_forward_out(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB) <= control_forward_in(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB);
+                   
+                end if;          
+            end if;    
         end if; 
     end process;
     
@@ -298,6 +313,11 @@ begin
                 
                 weight_tail <= (others => '0');
                 activation_tail <= (others => '0');
+                
+                control_forward_out(PE_ACTIVATIONS_CLEAR) <= '0';
+                control_forward_out(PE_WEIGHTS_CLEAR) <= '0';
+                control_forward_out(PE_WEIGHT_VALID) <= '0';
+                control_forward_out(PE_ACTIVATION_VALID) <= '0';
                 
             elsif (forward_enable = '1') then 
                
@@ -321,6 +341,13 @@ begin
                     weight_register_file(to_integer(weight_tail(WEIGHT_QUEUE_SIZE_BITS-1 downto 0))) <= weight_forward_in; 
                     weight_forward_out <= weight_forward_in;
                 end if; 
+                
+                                
+                control_forward_out(PE_ACTIVATIONS_CLEAR) <= control_forward_in(PE_ACTIVATIONS_CLEAR);
+                control_forward_out(PE_WEIGHTS_CLEAR) <= control_forward_in(PE_WEIGHTS_CLEAR);
+                control_forward_out(PE_WEIGHT_VALID) <=  control_forward_in(PE_WEIGHT_VALID);
+                control_forward_out(PE_ACTIVATION_VALID) <= control_forward_in(PE_ACTIVATION_VALID);
+                
         
             end if; 
         end if;

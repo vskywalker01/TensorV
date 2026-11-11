@@ -40,12 +40,14 @@ architecture Behavioral of buffer_unit is
     signal buffer_empty, buffer_full:   STD_LOGIC;
     
     signal counter: UNSIGNED(BUFFER_SIZE_BITS-1 downto 0);
-    
+    signal data:    STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
 begin
     buffer_empty <= '1' when (tail = head)
                         else '0';
     buffer_full <= '1'  when (tail(BUFFER_SIZE_BITS-1 downto 0) = head(BUFFER_SIZE_BITS-1 downto 0) and not(tail(BUFFER_SIZE_BITS) = head(BUFFER_SIZE_BITS)))
                         else '0';
+    
+    data_out <= data when (enable = '1') else (others => 'Z');
     
     stage1: process(clk) is 
     begin 
@@ -54,7 +56,7 @@ begin
                 counter <= (others => '0');
                 head <= (others => '0'); 
                 tail <= (others => '0'); 
-                data_out <= (others => 'Z');
+                data <= (others => 'Z');
                 ready_out <= '1';
                 valid_out <= '0';
                 
@@ -62,31 +64,36 @@ begin
                 if (add_in = '1' and buffer_full = '0') then 
                     register_file(to_integer(tail(BUFFER_SIZE_BITS-1 downto 0))) <= data_in;
                     tail <= (tail + 1); 
-                    
+                end if;
                 
-                elsif (enable = '1') then
-                    if (send_in = '1' ) then 
-                        ready_out <= '0'; 
-                        counter <= UNSIGNED(counter_in); 
-                        data_out <= (others => 'Z');
-                    elsif (counter > 0 and buffer_empty = '0' and step_in = '1') then 
-                        data_out <= register_file(to_integer(head(BUFFER_SIZE_BITS-1 downto 0)));
+                if (send_in = '1' and UNSIGNED(counter_in) > 0) then 
+                    if (buffer_empty = '0' and enable = '1') then
+                        data <= register_file(to_integer(head(BUFFER_SIZE_BITS-1 downto 0)));
                         head <= (head + 1); 
-                        counter <= counter - 1; 
-                        ready_out <= '0'; 
-                    elsif (counter = 0) then 
-                        data_out <= (others => 'Z');
-                        ready_out <= '1';
-                    else 
-                        data_out <= (others => 'Z');
+                        counter <= UNSIGNED(counter_in)-1;
+                        valid_out <= '1';
+                    else
+                        counter <= UNSIGNED(counter_in);
+                        valid_out <= '0';
                     end if;
-                end if; 
-                
-                if (counter > 0 and buffer_empty = '0' and step_in = '1') then
+                    ready_out <= '0'; 
+                    
+                elsif (counter > 0 and buffer_empty = '0' and step_in = '1' and enable = '1') then 
+                    data <= register_file(to_integer(head(BUFFER_SIZE_BITS-1 downto 0)));
+                    head <= (head + 1); 
+                    counter <= counter - 1; 
+                    ready_out <= '0'; 
                     valid_out <= '1';
-                else 
+                else
                     valid_out <= '0';
+                end if;  
+                             
+                if (counter = 0) then 
+                    ready_out <= '1';
+                else 
+                    ready_out <= '0';
                 end if; 
+            
             end if;
         end if;
     end process;
