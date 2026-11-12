@@ -1,3 +1,35 @@
+---- PE convolutional core testbench -----
+-- This testbench performs the execution of a scheduling of one convolution by sending commands to the convolutional matrix core 
+
+-- By considering the architecture of the convolutional core, the process of computing a convolution is divided in the following steps: 
+--  *   input buffers loading phase -> the activation and weight matrices are loaded in the matrix buffers (not the convolutional cores)
+--  *   bias buffers loading phase .> the biases, if needed, are loaded in the bias buffers
+--  *   matrix loading phase -> the data tontained in the activation/weight buffers are loaded into the PE of the matrix 
+--  *   matrix computing phase -> the PEs in the matrix proeed to compute the convolution
+--  *   matrix unloading phase -> the results computed by the PEs are transferred into the output buffers 
+--  *   output buffers unloading phase -> the results saved in the output buffers are transferred in the output lines.   
+
+-- The matrix unloading phase and the matrix loading phase can be performed at the same time.
+-- If we consider the bias and activation input lines as a single bus, we can rewrite the scheduling of the operations in the following order: 
+
+--  buffer units        matrix 
+--  Input loading        
+--  Bias loading        matrix loading 
+--                      matrix computing 
+--                      matrix unloading 
+--  output unloading    
+
+-- If we schedule the computation of two matrices M1 and M2, we obtain
+
+-- buffer units         matrix 
+-- M1 input loading     
+-- M1 bias loading      M! matrix loading 
+-- M2 input loading     M! matrix computing            
+-- M2 bias loading      M1 matrix unloading + M2 matrix loading
+-- M1 output unloading  M2 matrix computing
+--                      M2 matrix unloading
+-- M2 output unloading
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use work.PE_MATRIX_PARAMETERS.ALL;
@@ -26,6 +58,7 @@ architecture Behavioral of PE_matrix_test is
         );
     end component;
     
+    -- The procedure send matrix_command sends a command to the convolutional matrix using its specific format 
     procedure send_matrix_command(
         constant activation_y_size:      in INTEGER := 0;
         constant activation_x_size:      in INTEGER := 0;
@@ -62,7 +95,7 @@ architecture Behavioral of PE_matrix_test is
         matrix_control_bus(MATRIX_CONTROL_COMMAND_VALID) <= '1';
         matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) <= command_type;
         
-        wait until falling_edge(clk);
+        wait until rising_edge(clk);
         
         matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_X_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_X_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_Y_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_Y_LSB) <= (others => '0');
@@ -81,6 +114,7 @@ architecture Behavioral of PE_matrix_test is
         matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) <= (others => '0');
     end procedure;
     
+    -- the send_buffer_command procedure sends a command to the buffer units using its specific format 
     procedure send_buffers_command(
         constant init_activations:               in STD_LOGIC := '0'; 
         constant init_weights:                   in STD_LOGIC := '0'; 
@@ -150,6 +184,7 @@ architecture Behavioral of PE_matrix_test is
         end if;      
     end procedure; 
     
+    -- signal used for interfacing the matrix 
     signal clk, reset: STD_LOGIC;
     signal weights_data_in:                     MATRIX_WEIGHTS_DATA_INTERFACE;
     signal activations_data_in:                 MATRIX_ACTIVATIONS_DATA_INTERFACE;
@@ -161,12 +196,16 @@ architecture Behavioral of PE_matrix_test is
     
     signal matrix_buffers_control_bus:          MATRIX_BUFFERS_CONTROL_INTERFACE; 
     signal matrix_buffers_status_bus:           MATRIX_BUFFERS_STATUS_INTERFACE;
-
-    signal data_load_signal:                    STD_LOGIC; 
-    signal data_load_done:                      STD_LOGIC; 
-    signal data_unload_signal:                  STD_LOGIC; 
-    signal data_unload_done:                    STD_LOGIC; 
     
+    --signal used to synchronize the buffer unit process and the matrix scheduler process 
+    signal inputs_load_signal:                      STD_LOGIC; 
+    signal inputs_load_done:                        STD_LOGIC;
+    signal bias_load_signal:                        STD_LOGIC;
+    signal bias_load_done:                          STD_LOGIC;  
+    signal results_unload_signal:                      STD_LOGIC; 
+    signal results_unload_done:                        STD_LOGIC; 
+    
+    -- test matrices used for the testbenches 
     type SAMPLE_MATRIX is array (natural range <>,natural range <>) of INTEGER; 
     constant TEST_MATRIX_SIZE: INTEGER := 5;
     constant TEST_WEIGHT_SIZE: INTEGER := 3;
@@ -191,10 +230,10 @@ architecture Behavioral of PE_matrix_test is
         ( -1,   2,    1)
     );
     
-    constant SAMPLE_RESULTS: SAMPLE_MATRIX(0 to TEST_RESULT_SIZE-1, 0 to TEST_RESULT_SIZE-1) := (
-        ( 15, 12, -1),
-        ( -7, 17,  6),
-        ( -12,  -7,  4)
+    constant TEST_RESULTS: SAMPLE_MATRIX(0 to TEST_RESULT_SIZE-1, 0 to TEST_RESULT_SIZE-1) := (
+        ( 15, 12, 0),
+        ( 0, 17,  6),
+        ( 0, 0,  4)
     );
 begin
     
@@ -214,6 +253,7 @@ begin
             
         );
 
+    -- clock process 
     clock: process 
     begin 
         loop 
@@ -224,16 +264,24 @@ begin
         end loop; 
     end process; 
     
+    -- This process simulates the buffer control unit. It uses the inputs/bias/outputs load/unload signals to be synchronized with the scheduler process.
     data_test_process: process         
+        variable error_counter: INTEGER := 0;
     begin 
-        data_load_done <= '0';
-        data_unload_done <= '0';
+        -- after the reset, the done flags are cleared
+        inputs_load_done <= '0';
+        bias_load_done <= '0';
+        results_unload_done <= '0';
                 
         send_buffers_command(
             matrix_buffers_control_bus => matrix_buffers_control_bus
         );
-
-        wait until rising_edge(data_load_signal); 
+        
+        wait until rising_edge(inputs_load_signal); 
+        
+        -- when the inputs_load_signal command is received, the process sends a load command for the weights and activations 
+        
+        -- The buffers are cleared from eventual past results
         send_buffers_command(
               init_activations => '1',
               init_weights => '1',
@@ -242,26 +290,14 @@ begin
               matrix_buffers_control_bus => matrix_buffers_control_bus
         );
         
-        wait until falling_edge(clk);
-    
+        wait until rising_edge(clk);
+ 
+        -- We send the weights and activations at the same time without stalls from the caches  
         for r in 0 to (TEST_MATRIX_SIZE)-1 loop 
             for c in 0 to (TEST_MATRIX_SIZE)-1 loop        
-                if (c < TEST_WEIGHT_SIZE and r < TEST_WEIGHT_SIZE and c < TEST_RESULT_SIZE and r < TEST_RESULT_SIZE) then 
+                if (c < TEST_WEIGHT_SIZE and r < TEST_WEIGHT_SIZE) then 
                     weights_data_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_WEIGHT(r,c),DATA_SIZE));
-                    activations_data_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(r,c),DATA_SIZE)); 
-                    bias_data_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_BIAS(r,c),DATA_SIZE)); 
-                    send_buffers_command(
-                          add_activation => '1',
-                          add_weight => '1',
-                          add_bias => '1',
-                          add_activation_address => r, 
-                          add_weight_address => r, 
-                          add_bias_address => r, 
-                          matrix_buffers_control_bus => matrix_buffers_control_bus
-                    );
-                elsif (c < TEST_WEIGHT_SIZE and r < TEST_WEIGHT_SIZE) then 
-                    weights_data_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_WEIGHT(r,c),DATA_SIZE));
-                    activations_data_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(r,c),DATA_SIZE)); 
+                    activations_data_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(r,c),DATA_SIZE));  
                     send_buffers_command(
                           add_activation => '1',
                           add_weight => '1',
@@ -269,18 +305,7 @@ begin
                           add_weight_address => r, 
                           matrix_buffers_control_bus => matrix_buffers_control_bus
                     );
-                elsif (c < TEST_RESULT_SIZE and r < TEST_RESULT_SIZE) then 
-                    bias_data_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_BIAS(r,c),DATA_SIZE)); 
-                    activations_data_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(r,c),DATA_SIZE)); 
-                    send_buffers_command(
-                          add_activation => '1',
-                          add_bias => '1',
-                          add_activation_address => r,  
-                          add_bias_address => r, 
-                          matrix_buffers_control_bus => matrix_buffers_control_bus
-                    );
-                    
-                else 
+                else
                     activations_data_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_MATRIX(r,c),DATA_SIZE)); 
                     send_buffers_command(
                           add_activation => '1',
@@ -288,56 +313,125 @@ begin
                           matrix_buffers_control_bus => matrix_buffers_control_bus
                     );
                 end if; 
-                wait until falling_edge(clk);
+                wait until rising_edge(clk);
             end loop; 
         end loop; 
         send_buffers_command(
               matrix_buffers_control_bus => matrix_buffers_control_bus
         );
-        data_load_done <= '1';
         
-        wait until rising_edge(data_unload_signal);
-        wait until falling_edge(clk);
+        inputs_load_done <= '1';
+        wait until rising_edge(bias_load_signal);
         
-        for l in 0 to (TEST_MATRIX_SIZE)-1 loop 
-            while (matrix_buffers_status_bus(MATRIX_BUFFERS_STATUS_OUTPUT_READY_LSB+l) = '0') loop 
+        -- if the bias load_signal is received, the process loads the bias into the buffers 
+        inputs_load_done <= '0';
+        wait until rising_edge(clk);
+        
+        for r in 0 to (TEST_RESULT_SIZE)-1 loop 
+            for c in 0 to (TEST_RESULT_SIZE)-1 loop        
+                bias_data_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_BIAS(r,c),DATA_SIZE)); 
                 send_buffers_command(
-                    get_output => '1',
-                    get_output_address => l,
-                    matrix_buffers_control_bus => matrix_buffers_control_bus
-                );           
-                
-                wait until falling_edge(clk);
-            end loop;
-        end loop;
+                      add_bias => '1',
+                      add_bias_address => r, 
+                      matrix_buffers_control_bus => matrix_buffers_control_bus
+                );
+                wait until rising_edge(clk);
+            end loop; 
+        end loop; 
         
         send_buffers_command(
               matrix_buffers_control_bus => matrix_buffers_control_bus
         );
+        bias_load_done <= '1';
+        wait until rising_edge(results_unload_signal);
+        wait until rising_edge(clk); 
+        
+        -- if the unload signal is received, the process unloads the values from the output buffers and checks for eventual errors. 
+        send_buffers_command(
+              matrix_buffers_control_bus => matrix_buffers_control_bus
+        );
+
+        wait until rising_edge(clk);
+        
+        bias_load_done <= '0';
+        
+        for r in 0 to (TEST_RESULT_SIZE)-1 loop
+            send_buffers_command(
+                get_output => '1',
+                get_output_address => r,
+                matrix_buffers_control_bus => matrix_buffers_control_bus
+            );
+            wait until rising_edge(clk);
+            
+            for c in 0 to (TEST_RESULT_SIZE)-1 loop 
+                wait until rising_edge(clk);
+                if not(outputs_data_out = STD_LOGIC_VECTOR(TO_SIGNED(TEST_RESULTS(r,c),DATA_SIZE))) then 
+                    report "Error during result verification of element ("
+                        & integer'image(r)
+                        & ","
+                        & integer'image(c)
+                        & ") \n Expected " 
+                        & integer'image(TEST_RESULTS(r,c)) 
+                        & ", got "
+                        & integer'image(to_integer(SIGNED(outputs_data_out))) 
+                    severity error; 
+                    error_counter := error_counter +1;
+                end if; 
+ 
+                
+            end loop; 
+        end loop;
+        
+        results_unload_done <= '1';
+        send_buffers_command(
+              matrix_buffers_control_bus => matrix_buffers_control_bus
+        );
+        
+        -- Test reports 
+        if (error_counter = 0) then 
+            report "test completed successfully :)";
+        else 
+            report "Test failed. Got "
+                & integer'image(error_counter) 
+                & " errors :("
+            severity error;
+        end if;
+
         wait;
+        
+        
+        
     end process; 
     
+    -- the control test process sends commands to the matrix and controls the buffer process 
     control_test_process: process 
     begin  
+    
         reset <= '1'; 
-        data_load_signal <= '0'; 
-        data_unload_signal <= '0';
-        wait until falling_edge(clk);
-        wait until falling_edge(clk);
+        inputs_load_signal <= '0'; 
+        bias_load_signal <= '0';
+        results_unload_signal <= '0';
+        wait until rising_edge(clk);
+        wait until rising_edge(clk);
         reset <= '0'; 
         
+        -- The process sends an INIT command to initialize the PEs 
         send_matrix_command(
             command_type => MATRIX_COMMAND_INIT,
             matrix_control_bus => matrix_control_bus,
             clk => clk
         );
         
-        wait until falling_Edge(clk);
+        wait until rising_edge(clk);
         
-        data_load_signal <= '1'; 
+        -- The process signals to the buffer process to load the inputs in the buffers and waits
+        inputs_load_signal <= '1'; 
         
-        wait until rising_edge(data_load_done);
-        wait until falling_edge(clk); 
+        wait until rising_edge(inputs_load_done);
+        wait until rising_edge(clk); 
+        
+        -- When the buffer loading phase is completed, the process sends a LOAD command to move the input data into the PEs and waits
+        inputs_load_signal <= '0';
 
         send_matrix_command(
             activation_y_size => TEST_MATRIX_SIZE,
@@ -358,10 +452,15 @@ begin
             clk => clk
         );
                 
-        wait until falling_edge(clk); 
-
+        wait until rising_edge(clk); 
+        
         wait until (matrix_buffers_status_bus(MATRIX_BUFFERS_STATUS_ACTIVATIONS_READY_LSB)='1');        
-        wait until falling_edge(clk); 
+        
+        -- when the ready signal is received from the input buffers, the process sends a bias load command to the buffer process and sends a 
+        -- COMPUTE command to the matrix 
+        wait until rising_edge(clk); 
+        
+        bias_load_signal <= '1';
         
         send_matrix_command(
             activation_y_size => TEST_MATRIX_SIZE,
@@ -382,8 +481,12 @@ begin
             clk => clk
         );
 
-        wait until (matrix_status_bus(MATRIX_STATUS_LINES_READY_LSB)='1');
-        wait until falling_edge(clk);
+        wait until (matrix_status_bus(MATRIX_STATUS_LINES_READY_LSB)='1' and bias_load_done = '1');
+        wait until rising_edge(clk);
+        
+        -- when the bias buffers and the PEs are ready, the process sends an UNLOAD command to the matrix
+        
+        bias_load_signal <= '0';
   
         send_matrix_command(
             activation_y_size => TEST_MATRIX_SIZE,
@@ -403,9 +506,11 @@ begin
             matrix_control_bus => matrix_control_bus,
             clk => clk
         );               
-                
-        wait until falling_edge(clk);
-        data_unload_signal <= '1'; 
+        
+        -- when the PEs are ready, the process sends a buffer unload command to the buffer process 
+        wait until (matrix_status_bus(MATRIX_STATUS_LINES_READY_LSB)='1');
+        wait until rising_edge(clk);
+        results_unload_signal <= '1'; 
 
         wait;
            

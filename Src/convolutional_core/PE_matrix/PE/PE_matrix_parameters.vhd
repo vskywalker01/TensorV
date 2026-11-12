@@ -25,8 +25,8 @@ package PE_MATRIX_PARAMETERS is
     -- Bit size used to define the specific dimensions in the matrix control interface.
     constant ACTIVATION_MATRIX_SIZE_BITS:           INTEGER := INTEGER(ceil(log2(REAL(ACTIVATION_LINES))));
     constant WEIGHT_MATRIX_SIZE_BITS:               INTEGER := INTEGER(ceil(log2(REAL(DEPTH))));
-    constant CONV_SHIFTS_BITS:                      INTEGER := INTEGER(ceil(log2(REAL(DEPTH))));
-    constant CONV_SKIP_BITS:                        INTEGER := INTEGER(ceil(log2(REAL(DEPTH))));
+    constant CONV_SHIFTS_BITS:                      INTEGER := INTEGER(ceil(log2(REAL(DEPTH))))+1;
+    constant CONV_SKIP_BITS:                        INTEGER := INTEGER(ceil(log2(REAL(DEPTH))))+1;
     constant REQUANTIZATION_SHIFT_BITS:             INTEGER := INTEGER(ceil(log2(REAL(ACCUMULATOR_SIZE))));
     
     -- Dimension of the convolutional core buffers    
