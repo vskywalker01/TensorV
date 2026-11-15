@@ -66,7 +66,7 @@ architecture Behavioral of pe_matrix_1L_convolution_test is
         constant weight_x_size:          in INTEGER := 0;
         constant conv_shifts_x:          in INTEGER := 0;
         constant conv_shifts_y:          in INTEGER := 0;  
-        constant conv_skips:             in INTEGER := 0; 
+        constant conv_stride:            in STD_LOGIC_VECTOR := CONV_STRIDE_1; 
         constant requantization_shift:   in INTEGER := 0;
         constant load_activations:       in STD_LOGIC := '0';
         constant load_weights:           in STD_LOGIC := '0'; 
@@ -85,7 +85,7 @@ architecture Behavioral of pe_matrix_1L_convolution_test is
         matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_Y_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_Y_LSB) <= STD_LOGIC_VECTOR(to_unsigned(weight_y_size,WEIGHT_MATRIX_SIZE_BITS));
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(conv_shifts_x,CONV_SHIFTS_BITS));
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB) <= STD_LOGIC_VECTOR(to_unsigned(conv_shifts_y,CONV_SHIFTS_BITS));
-        matrix_control_bus(MATRIX_CONTROL_CONV_SKIP_X_MSB downto MATRIX_CONTROL_CONV_SKIP_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(conv_skips,CONV_SKIP_BITS));
+        matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_X_MSB downto MATRIX_CONTROL_CONV_STRIDE_X_LSB) <= conv_stride;
         matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB) <= STD_LOGIC_VECTOR(to_unsigned(requantization_shift,REQUANTIZATION_SHIFT_BITS));
         matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) <= load_activations;
         matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) <= load_weights;
@@ -103,7 +103,7 @@ architecture Behavioral of pe_matrix_1L_convolution_test is
         matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_Y_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_Y_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB) <= (others => '0');
-        matrix_control_bus(MATRIX_CONTROL_CONV_SKIP_X_MSB downto MATRIX_CONTROL_CONV_SKIP_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_X_MSB downto MATRIX_CONTROL_CONV_STRIDE_X_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) <= '0';
         matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) <= '0';
@@ -276,6 +276,14 @@ begin
         inputs_load_done <= '0';
         bias_load_done <= '0';
         results_unload_done <= '0';
+        
+        report "control bus: "
+            & "MATRIX_CONTROL_CONV_SHIFTS_X_LSB: " & integer'image(MATRIX_CONTROL_CONV_SHIFTS_X_LSB)
+            & ", MATRIX_CONTROL_CONV_SHIFTS_X_MSB: " & integer'image(MATRIX_CONTROL_CONV_SHIFTS_X_MSB)
+            & ", CONV_SHIFTS_BITS: " & integer'image(CONV_SHIFTS_BITS)
+        severity error;
+
+
                 
         send_buffers_command(
             matrix_buffers_control_bus => matrix_buffers_control_bus
@@ -423,7 +431,7 @@ begin
             weight_y_size => TEST_WEIGHT_SIZE, 
             conv_shifts_x => TEST_RESULT_SIZE,
             conv_shifts_y => TEST_RESULT_SIZE,
-            conv_skips => 1, 
+            conv_stride => CONV_STRIDE_1, 
             requantization_shift => 0,
             load_activations => '1',
             load_weights => '1', 
@@ -439,6 +447,27 @@ begin
         
         wait until (matrix_buffers_status_bus(MATRIX_BUFFERS_STATUS_ACTIVATIONS_READY_LSB)='1');        
         
+        send_matrix_command(
+            activation_y_size => TEST_MATRIX_SIZE,
+            activation_x_size => TEST_MATRIX_SIZE, 
+            weight_x_size => TEST_WEIGHT_SIZE,
+            weight_y_size => TEST_WEIGHT_SIZE, 
+            conv_shifts_x => TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,
+            conv_shifts_y => TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,
+            conv_stride => CONV_STRIDE_1, 
+            requantization_shift => 0,
+            load_activations => '0',
+            load_weights => '0', 
+            load_bias => '0', 
+            clear_activations => '0', 
+            clear_weights => '0', 
+            command_type => MATRIX_COMMAND_COMPUTE,
+            matrix_control_bus => matrix_control_bus,
+            clk => clk
+        );
+
+        wait until (matrix_status_bus(MATRIX_STATUS_LINES_READY_LSB)='1');
+        
         -- when the ready signal is received from the input buffers, the process sends a bias load command to the buffer process and sends a 
         -- COMPUTE command to the matrix 
         wait until rising_edge(clk); 
@@ -450,7 +479,7 @@ begin
             weight_y_size => TEST_WEIGHT_SIZE, 
             conv_shifts_x => TEST_RESULT_SIZE,
             conv_shifts_y => TEST_RESULT_SIZE,
-            conv_skips => 1, 
+            conv_stride => CONV_STRIDE_1, 
             requantization_shift => 0,
             load_activations => '0',
             load_weights => '0', 

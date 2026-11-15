@@ -1,0 +1,4 @@
+Time resolution is 1 ps
+Note: test completed successfully :)
+Time: 2820 ns  Iteration: 1  Process: /pe_matrix_1L1S_convolution_test/data_test_process  File: /home/vittorio/GitHub/TensorV/TensorV.srcs/sim_1/new/pe_matrix_1L1S_convolution_test.vhd
+INFO: xsimkernel Simulation Memory Usage: 327736 KB (Peak: 362064 KB), Simulation CPU Usage: 1280 ms

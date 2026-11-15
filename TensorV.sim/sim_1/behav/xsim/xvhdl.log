@@ -1,0 +1,2 @@
+INFO: [VRFC 10-163] Analyzing VHDL file "/home/vittorio/GitHub/TensorV/Src/convolutional_core/PE_matrix/PE_matrix.vhd" into library xil_defaultlib
+INFO: [VRFC 10-3107] analyzing entity 'PE_matrix'

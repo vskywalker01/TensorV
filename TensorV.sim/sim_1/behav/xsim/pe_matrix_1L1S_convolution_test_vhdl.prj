@@ -1,0 +1,35 @@
+# compile vhdl design source files
+vhdl xil_defaultlib  \
+"../../../../Libs/Registers/registers.vhd" \
+"../../../../Src/convolutional_core/PE_matrix/PE/PE_matrix_parameters.vhd" \
+"../../../../Src/convolutional_core/PE_matrix/PE/PE.vhd" \
+"../../../../Libs/Bit_reductors/bit_reductiors.vhd" \
+"../../../../Src/convolutional_core/PE_matrix/PE_matrix.vhd" \
+"../../../../Src/convolutional_core/PE_matrix/PE/PE_stage1.vhd" \
+"../../../../Src/convolutional_core/PE_matrix/PE/PE_stage2.vhd" \
+"../../../../Src/convolutional_core/PE_matrix/PE/PE_stage3.vhd" \
+"../../../../Libs/Adders/adders.vhd" \
+"../../../../Src/convolutional_core/PE_matrix/PE/mac/accumulation_stage.vhd" \
+"../../../../Libs/Multipliers/Reductors/reductors.vhd" \
+"../../../../Libs/Multipliers/Reductors/adder_reductor/adder_reductor.vhd" \
+"../../../../Libs/Bit_reductors/and_reductor/and_reductor.vhd" \
+"../../../../Libs/Shifters/barrel_right_shifter/barrel_right_shifter.vhd" \
+"../../../../Src/convolutional_core/PE_matrix/output_processor/bias_adder/bias_adder.vhd" \
+"../../../../Libs/Adders/brent_kung/bk_adder.vhd" \
+"../../../../Libs/Adders/brent_kung/bk_adder_decode.vhd" \
+"../../../../Libs/Adders/brent_kung/bk_adder_encode.vhd" \
+"../../../../Libs/Adders/brent_kung/bk_adder_level.vhd" \
+"../../../../Libs/Registers/buffer_unit/buffer_unit.vhd" \
+"../../../../Libs/Multipliers/Generators/generators.vhd" \
+"../../../../Libs/Multipliers/Generators/baugh_wooley/bw_generator.vhd" \
+"../../../../Libs/Adders/full_adder/full_adder.vhd" \
+"../../../../Libs/Adders/half_adder/half_adder.vhd" \
+"../../../../Libs/Bit_reductors/or_reductor/or_reductor.vhd" \
+"../../../../Src/convolutional_core/PE_matrix/output_processor/output_processor.vhd" \
+"../../../../Src/convolutional_core/PE_matrix/PE/mac/reduction_stage.vhd" \
+"../../../../Libs/Shifters/shifters.vhd" \
+"../../../../Src/convolutional_core/PE_matrix/output_processor/requantizer/requantizer.vhd" \
+"../../../../TensorV.srcs/sim_1/new/pe_matrix_1L1S_convolution_test.vhd" \
+
+# Do not sort compile order
+nosort

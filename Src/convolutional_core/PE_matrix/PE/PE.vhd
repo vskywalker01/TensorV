@@ -5,9 +5,8 @@ use work.PE_matrix_parameters.ALL;
 entity PE is 
     Port ( 
         clk:                    in STD_LOGIC;  
-        reset:                  in STD_LOGIC;                 
-        enable:                 in STD_LOGIC; 
-        forward_enable:         in STD_LOGIC; 
+        reset:                  in STD_LOGIC;     
+        enable:                 in STD_LOGIC;             
         
         control_in:             in PE_CONTROL_INTERFACE; 
         status_in:              in PE_STATUS_INTERFACE;
@@ -15,12 +14,9 @@ entity PE is
         activation_in:          in STD_LOGIC_VECTOR( DATA_SIZE-1 downto 0);
         accumulator_in:         in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0); 
         
-        control_out:            out PE_CONTROL_INTERFACE;
-        status_out:             out PE_STATUS_INTERFACE;
-        weight_out:             out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
-        activation_out:         out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-        accumulator_out:        out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0)
         
+        status_out:             out PE_STATUS_INTERFACE;
+        accumulator_out:        out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0)
     );
 end PE;
 
@@ -30,21 +26,16 @@ architecture Behavioral of PE is
             clk:                        in STD_LOGIC;  
             reset:                      in STD_LOGIC;                 
             enable:                     in STD_LOGIC; 
-            forward_enable:             in STD_LOGIC; 
             
             -- matrix forward lines
             
-            control_forward_in:                 in PE_CONTROL_INTERFACE; 
-            weight_forward_in:                  in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
-            status_forward_in:                  in PE_STATUS_INTERFACE;
-            activation_forward_in:              in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-            accumulator_forward_in:             in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0); 
-           
+            control_in:                 in PE_CONTROL_INTERFACE; 
+            weight_in:                  in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
+            status_in:                  in PE_STATUS_INTERFACE;
+            activation_in:              in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+            accumulator_in:             in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0); 
             
-            control_forward_out:                out PE_CONTROL_INTERFACE;
             status_forward_out:                 out PE_STATUS_INTERFACE;
-            weight_forward_out:                 out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
-            activation_forward_out:             out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             accumulator_forward_out:            out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
             
             -- Internal connections (From stage 1 to stage 2)
@@ -69,16 +60,10 @@ architecture Behavioral of PE is
                         
             -- matrix forward lines
             
-            control_forward_in:                 in PE_CONTROL_INTERFACE; 
             status_forward_in:                  in PE_STATUS_INTERFACE;
-            weight_forward_in:                  in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
-            activation_forward_in:              in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             accumulator_forward_in:             in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0); 
             
-            control_forward_out:                out PE_CONTROL_INTERFACE;   
-            status_forward_out:                 out PE_STATUS_INTERFACE;               
-            weight_forward_out:                 out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-            activation_forward_out:             out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
+            status_forward_out:                  out PE_STATUS_INTERFACE;
             accumulator_forward_out:            out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
             
             -- Queue Input lines (Stage 1)
@@ -108,17 +93,11 @@ architecture Behavioral of PE is
             
             -- matrix forward lines             
             
-            control_forward_in:                 in PE_CONTROL_INTERFACE; 
             status_forward_in:                  in PE_STATUS_INTERFACE;
             accumulator_forward_in:             in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
-            weight_forward_in:                  in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-            activation_forward_in:              in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
             
-            control_forward_out:                out PE_CONTROL_INTERFACE;
-            status_forward_out:                 out PE_STATUS_INTERFACE;
-            weight_forward_out:                 out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-            activation_forward_out:             out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-            accumulator_forward_out:            out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
+            status_out:                         out PE_STATUS_INTERFACE;
+            accumulator_out:                    out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
             
             -- control lines and I/O from stage 2
             reduction_partial1_in:              in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0); 
@@ -135,10 +114,7 @@ architecture Behavioral of PE is
     end component;
     
     -- forward signals
-    signal control_forward_12, control_forward_23:            PE_CONTROL_INTERFACE;
     signal status_forward_12, status_forward_23:              PE_STATUS_INTERFACE;
-    signal weight_forward_12, weight_forward_23:              STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
-    signal activation_forward_12, activation_forward_23:      STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
     signal accumulator_forward_12, accumulator_forward_23:    STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
     
     -- signals from stage 3 to stage 1 
@@ -160,17 +136,13 @@ begin
             clk => clk, 
             reset => reset, 
             enable => enable,
-            forward_enable => forward_enable,
             
-            control_forward_in => control_in,
-            status_forward_in => status_in,
-            weight_forward_in => weight_in,
-            activation_forward_in => activation_in,
-            accumulator_forward_in => accumulator_in, 
-            control_forward_out => control_forward_12,
+            control_in => control_in,
+            status_in => status_in,
+            weight_in => weight_in,
+            activation_in => activation_in,
+            accumulator_in => accumulator_in, 
             status_forward_out => status_forward_12,
-            weight_forward_out => weight_forward_12,
-            activation_forward_out => activation_forward_12,
             accumulator_forward_out => accumulator_forward_12,
             
             accumulator_loopback_in => accumulator_loopback,
@@ -186,17 +158,11 @@ begin
         port map(
             clk => clk, 
             reset => reset, 
-            
            
-            control_forward_in => control_forward_12,
             status_forward_in => status_forward_12,
-            weight_forward_in => weight_forward_12,
-            activation_forward_in => activation_forward_12,
             accumulator_forward_in => accumulator_forward_12, 
-            control_forward_out => control_forward_23,
+            
             status_forward_out => status_forward_23,
-            weight_forward_out => weight_forward_23,
-            activation_forward_out => activation_forward_23,
             accumulator_forward_out => accumulator_forward_23,
             
             weight_queue_in => weight_queue,
@@ -213,17 +179,11 @@ begin
         port map(
             clk => clk, 
             reset => reset,
-              
-            control_forward_in => control_forward_23,
-            weight_forward_in => weight_forward_23,
-            activation_forward_in => activation_forward_23,
+            
             accumulator_forward_in => accumulator_forward_23, 
-            control_forward_out => control_out,
             status_forward_in => status_forward_23,
-            status_forward_out => status_out,
-            weight_forward_out => weight_out,
-            activation_forward_out => activation_out,
-            accumulator_forward_out => accumulator_out,
+            status_out => status_out,
+            accumulator_out => accumulator_out,
             
             reduction_partial1_in => reduction_partial1,
             reduction_partial2_in => reduction_partial2, 

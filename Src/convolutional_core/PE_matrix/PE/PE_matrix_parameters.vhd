@@ -23,11 +23,17 @@ package PE_MATRIX_PARAMETERS is
     constant ACCUMULATOR_SIZE: INTEGER := (DATA_SIZE*2)+INTEGER(ceil(log2(REAL(DEPTH+1))));
     
     -- Bit size used to define the specific dimensions in the matrix control interface.
-    constant ACTIVATION_MATRIX_SIZE_BITS:           INTEGER := INTEGER(ceil(log2(REAL(ACTIVATION_LINES))));
-    constant WEIGHT_MATRIX_SIZE_BITS:               INTEGER := INTEGER(ceil(log2(REAL(DEPTH))));
-    constant CONV_SHIFTS_BITS:                      INTEGER := INTEGER(ceil(log2(REAL(DEPTH))))+1;
-    constant CONV_SKIP_BITS:                        INTEGER := INTEGER(ceil(log2(REAL(DEPTH))))+1;
-    constant REQUANTIZATION_SHIFT_BITS:             INTEGER := INTEGER(ceil(log2(REAL(ACCUMULATOR_SIZE))));
+    constant ACTIVATION_MATRIX_SIZE_BITS:           INTEGER := INTEGER(ceil(log2(REAL(ACTIVATION_LINES+1))));
+    constant WEIGHT_MATRIX_SIZE_BITS:               INTEGER := INTEGER(ceil(log2(REAL(DEPTH+1))));
+    constant CONV_SHIFTS_BITS:                      INTEGER := INTEGER(ceil(log2(REAL(DEPTH+1))));
+   
+    constant REQUANTIZATION_SHIFT_BITS:             INTEGER := INTEGER(ceil(log2(REAL(ACCUMULATOR_SIZE+1))));
+    
+    constant CONV_STRIDE_BITS:                       INTEGER := 2;
+    constant CONV_STRIDE_1:                          STD_LOGIC_VECTOR := "00";
+    constant CONV_STRIDE_2:                          STD_LOGIC_VECTOR := "01";
+    constant CONV_STRIDE_4:                          STD_LOGIC_VECTOR := "10";
+    constant CONV_STRIDE_8:                          STD_LOGIC_VECTOR := "11";
     
     -- Dimension of the convolutional core buffers    
     constant BUFFER_SIZE: INTEGER := 16; 
@@ -42,11 +48,11 @@ package PE_MATRIX_PARAMETERS is
     constant PE_PROCESS_TYPE:               INTEGER := PE_PROCESS_START+1;
     constant PE_WEIGHT_VALID:               INTEGER := PE_PROCESS_TYPE+1;
     constant PE_ACTIVATION_VALID:           INTEGER := PE_WEIGHT_VALID+1;
-    constant PE_CONV_SHIFTS_LSB:            INTEGER := PE_ACTIVATION_VALID+1;
-    constant PE_CONV_SHIFTS_MSB:            INTEGER := PE_CONV_SHIFTS_LSB+CONV_SHIFTS_BITS-1;
-    constant PE_CONV_SKIP_LSB:              INTEGER := PE_CONV_SHIFTS_MSB+1;
-    constant PE_CONV_SKIP_MSB:              INTEGER := PE_CONV_SKIP_LSB+CONV_SKIP_BITS-1;
-    constant PE_CONTROL_INTERFACE_SIZE:     INTEGER := PE_CONV_SKIP_MSB+1; 
+    constant PE_CONV_SHIFTS_X_LSB:          INTEGER := PE_ACTIVATION_VALID+1;
+    constant PE_CONV_SHIFTS_X_MSB:          INTEGER := PE_CONV_SHIFTS_X_LSB+CONV_SHIFTS_BITS-1;
+    constant PE_CONV_STRIDE_X_LSB:          INTEGER := PE_CONV_SHIFTS_X_MSB+1;
+    constant PE_CONV_STRIDE_X_MSB:          INTEGER := PE_CONV_STRIDE_X_LSB+CONV_STRIDE_BITS-1;
+    constant PE_CONTROL_INTERFACE_SIZE:     INTEGER := PE_CONV_STRIDE_X_MSB+1; 
     
     -- Definition of PE status lines (used as status lines from a single PE)
     
@@ -116,9 +122,9 @@ package PE_MATRIX_PARAMETERS is
     constant MATRIX_CONTROL_CONV_SHIFTS_X_MSB:              INTEGER := MATRIX_CONTROL_CONV_SHIFTS_X_LSB+CONV_SHIFTS_BITS-1; 
     constant MATRIX_CONTROL_CONV_SHIFTS_Y_LSB:              INTEGER := MATRIX_CONTROL_CONV_SHIFTS_X_MSB+1;
     constant MATRIX_CONTROL_CONV_SHIFTS_Y_MSB:              INTEGER := MATRIX_CONTROL_CONV_SHIFTS_Y_LSB+CONV_SHIFTS_BITS-1;
-    constant MATRIX_CONTROL_CONV_SKIP_X_LSB:                INTEGER := MATRIX_CONTROL_CONV_SHIFTS_Y_MSB+1;
-    constant MATRIX_CONTROL_CONV_SKIP_X_MSB:                INTEGER := MATRIX_CONTROL_CONV_SKIP_X_LSB+CONV_SKIP_BITS-1;
-    constant MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB:       INTEGER := MATRIX_CONTROL_CONV_SKIP_X_MSB+1;
+    constant MATRIX_CONTROL_CONV_STRIDE_X_LSB:                INTEGER := MATRIX_CONTROL_CONV_SHIFTS_Y_MSB+1;
+    constant MATRIX_CONTROL_CONV_STRIDE_X_MSB:                INTEGER := MATRIX_CONTROL_CONV_STRIDE_X_LSB+CONV_STRIDE_BITS-1;
+    constant MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB:       INTEGER := MATRIX_CONTROL_CONV_STRIDE_X_MSB+1;
     constant MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB:       INTEGER := MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB+REQUANTIZATION_SHIFT_BITS-1;
     
     constant MATRIX_CONTROL_INTERFACE_SIZE:                 INTEGER := MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB+1;

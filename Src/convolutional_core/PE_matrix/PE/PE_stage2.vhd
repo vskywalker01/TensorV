@@ -2,7 +2,6 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use work.PE_MATRIX_PARAMETERS.ALL; 
 
-
 entity PE_stage2 is
     Port ( 
         clk:                        in STD_LOGIC;  
@@ -10,16 +9,10 @@ entity PE_stage2 is
 
         -- matrix forward lines
         
-        control_forward_in:                 in PE_CONTROL_INTERFACE;
         status_forward_in:                  in PE_STATUS_INTERFACE;
-        weight_forward_in:                  in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0); 
-        activation_forward_in:              in STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
         accumulator_forward_in:             in STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0); 
         
-        control_forward_out:                out PE_CONTROL_INTERFACE;
         status_forward_out:                 out PE_STATUS_INTERFACE;
-        weight_forward_out:                 out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
-        activation_forward_out:             out STD_LOGIC_VECTOR(DATA_SIZE-1 downto 0);
         accumulator_forward_out:            out STD_LOGIC_VECTOR(ACCUMULATOR_SIZE-1 downto 0);
         
         -- Queue Input lines (Stage 1)
@@ -80,8 +73,9 @@ begin
     stage2: process(clk) is 
     begin 
         if (rising_edge(clk)) then 
-            if (reset = '1') then 
+            if (reset = '1' or status_forward_in(PE_ACTIVE) <= '0') then 
                 
+                accumulator_forward_out <= (others => '0');
                 reduction_valid_out <= '0';
                 reduction_type_out <= '0';
                 
@@ -92,24 +86,11 @@ begin
                 status_forward_out(PE_STATUS_TYPE) <= '0';
                 status_forward_out(PE_STATUS_WAITING) <= '0';
                 
-                control_forward_out(PE_INIT) <= '1';
-                control_forward_out(PE_PROCESS_START) <= '0';
-                control_forward_out(PE_PROCESS_TYPE) <= '0';
-                control_forward_out(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB) <= (others => '0');
-                control_forward_out(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB) <= (others => '0');
-                
             else
                 
                 -- Matrix forward lines
-                control_forward_out(PE_INIT) <= control_forward_in(PE_INIT);
-                control_forward_out(PE_PROCESS_START) <= control_forward_in(PE_PROCESS_START);
-                control_forward_out(PE_PROCESS_TYPE) <= control_forward_in(PE_PROCESS_TYPE);
-
-                control_forward_out(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB) <= control_forward_in(PE_CONV_SHIFTS_MSB downto PE_CONV_SHIFTS_LSB);
-                control_forward_out(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB) <= control_forward_in(PE_CONV_SKIP_MSB downto PE_CONV_SKIP_LSB);
-               
+                
                 status_forward_out <= status_forward_in;
-                accumulator_forward_out <= accumulator_forward_in;
                 
                 
                 -- if the PE is currently processing a row (not done yet), the reduction_partial lines will assume the result of the multiplication between 
@@ -125,13 +106,12 @@ begin
                 -- the reduction_partial1 line will assume the accumulation from the queue and reduction_partial2 line will assume 0.
                 -- This is done only when there is a valid accumulator input (data available from past PE).
                 
-                elsif (status_forward_in(PE_READY)='0' and status_forward_in(PE_STATUS_TYPE) = '1' and status_forward_in(PE_STATUS_WAITING) = '0') then
-                    if ((status_forward_in(PE_OUTPUT_VALID)= '1' and status_forward_in(PE_ACTIVE)='1') or status_forward_in(PE_ACTIVE)='0') then 
-                        reduction_partial1_out <= accumulator_queue_in;
-                        reduction_partial2_out <= (others => '0');
-                        reduction_valid_out <= '1';           
-                        reduction_type_out <= '0';
-                    end if; 
+                elsif (status_forward_in(PE_READY)='0' and status_forward_in(PE_STATUS_TYPE) = '1' and status_forward_in(PE_STATUS_WAITING) = '0' and status_forward_in(PE_OUTPUT_VALID)= '1') then
+                    reduction_partial1_out <= accumulator_queue_in;
+                    reduction_partial2_out <= (others => '0');
+                    reduction_valid_out <= '1';           
+                    reduction_type_out <= '0';
+                    accumulator_forward_out <= accumulator_forward_in;
                     
                -- if the PE has processed a row, the accumulator will be pushed inside its queue in the third stage (the reduction is not valid)
  
@@ -142,30 +122,10 @@ begin
                     reduction_valid_out <= '0';   
                     reduction_type_out <= '0';
                 end if;
+                
+
+                
             end if;
         end if; 
     end process;
-    
-    -- PE data forward registers
-    stage2_forward: process(clk) is 
-    begin 
-        if rising_edge(clk) then
-            if (reset = '1') then 
-                weight_forward_out <= (others => '0');
-                activation_forward_out <= (others => '0');
-                control_forward_out(PE_ACTIVATIONS_CLEAR) <= '0';
-                control_forward_out(PE_WEIGHTS_CLEAR) <= '0';
-                control_forward_out(PE_WEIGHT_VALID) <= '0';
-                control_forward_out(PE_ACTIVATION_VALID) <= '0';
-            else 
-                weight_forward_out <= weight_forward_in;   
-                activation_forward_out <= activation_forward_in;
-                control_forward_out(PE_ACTIVATIONS_CLEAR) <= control_forward_in(PE_ACTIVATIONS_CLEAR);
-                control_forward_out(PE_WEIGHTS_CLEAR) <= control_forward_in(PE_WEIGHTS_CLEAR);
-                control_forward_out(PE_WEIGHT_VALID) <=  control_forward_in(PE_WEIGHT_VALID);
-                control_forward_out(PE_ACTIVATION_VALID) <= control_forward_in(PE_ACTIVATION_VALID);
-            end if; 
-        end if;
-     end process;
-
 end Behavioral;
