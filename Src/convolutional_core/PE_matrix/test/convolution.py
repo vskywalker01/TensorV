@@ -1,81 +1,129 @@
 import numpy as np
 from scipy import signal
 
-large_activation = np.array([
-    [ 3,  7, -4, 12, -1,  9,  3,  6, -8, 15,  2,  5, -3,  8,  1],
-    [11, -2,  6, 14,  0,  7, -5,  3, 10, -1,  8, 12,  4,  9, -6],
-    [-7,  5, 13, -2,  8,  1,  6, 11, -3,  4,  9,  2, -10,  7,  5],
-    [ 2,  8, -6, 10,  4, -3,  7,  1,  6, 12,  0,  5,  9, -4,  3],
-    [15, -1,  7, -8,  2, 11,  4,  9, -5,  3,  8, 13,  1,  6,  2],
-    [-3,  6, 12,  1,  9,  4, -7,  2,  8, 14,  5,  0, -6,  3, 10],
-    [ 8, -5,  1,  7, 13,  3,  6, -2,  4, 11,  9,  5, -1,  7,  8],
-    [-9,  3,  8, 10, -4,  6,  1, 12,  5,  2,  7,  4,  9, -3,  1],
-    [ 5, 11, -2,  7,  3,  9,  4, -6,  8,  1, 13,  6,  2,  5, 10],
-    [12,  0,  6, -8,  5,  2,  8,  3, -1,  7,  4, 11,  9,  1,  6],
-    [-6,  9,  1,  7, 14,  3,  5,  2, 10,  4, -3,  8,  1,  6,  7],
-    [ 3, -4,  8, 11,  6, 12,  1,  7, -5,  9,  2,  4,  3,  8,  5],
-    [10,  5, -7,  2,  8,  4,  9,  6,  1, 13, -1,  7,  5,  3,  2],
-    [-1,  7,  4, 12,  3,  6,  8, -2,  5,  9, 10,  1,  6,  4,  7],
-    [ 6,  2,  9,  5,  1,  8, 11, -3,  4,  7, -6,  3,  8,  2, 10]
+small_activation = np.array([
+    [1,  2,  0,  -1, 3],
+    [4,  0,  2,  -3, 1],
+    [-2, 1,  3,  0,  4],
+    [0,  -3, 1,  2, -1],
+    [3,  1,  -2, 0,  2]
+
+], dtype = np.int8)
+
+medium_activation = np.array([
+    [ 3,  7, -4, 12, -1,  9,  3,  6, -8, 15],
+    [11, -2,  6, 14,  0,  7, -5,  3, 10, -1],
+    [-7,  5, 13, -2,  8,  1,  6, 11, -3,  4],
+    [ 2,  8, -6, 10,  4, -3,  7,  1,  6, 12],
+    [15, -1,  7, -8,  2, 11,  4,  9, -5,  3],
+    [-3,  6, 12,  1,  9,  4, -7,  2,  8, 14],
+    [ 8, -5,  1,  7, 13,  3,  6, -2,  4, 11],
+    [-9,  3,  8, 10, -4,  6,  1, 12,  5,  2],
+    [ 5, 11, -2,  7,  3,  9,  4, -6,  8,  1],
+    [12,  0,  6, -8,  5,  2,  8,  3, -1,  7]
 ], dtype=np.int8)
 
-large_activation_kernel = np.array([
+large_activation = np.array([
+    [-24, 37, -56, 89, 12, -43, 67, -18, 45, -32, 78, -91, 103, -21, 54],
+    [72, -19, 48, -35, 61, -7, 83, -14, 29, -51, 36, -76, 94, -42, 16],
+    [-63, 28, -49, 87, 33, -11, 75, -16, 21, -47, 58, -88, 99, -13, 38],
+    [14, -41, 52, -68, 30, -9, 81, -10, 34, -72, 43, -65, 95, -23, 57],
+    [-36, 22, -44, 85, 11, -15, 70, -8, 46, -39, 69, -77, 102, -25, 31],
+    [55, -12, 39, -58, 76, -3, 84, -17, 23, -53, 42, -66, 93, -20, 50],
+    [-11, 40, -46, 82, 18, -5, 71, -13, 26, -38, 51, -74, 98, -27, 35],
+    [64, -9, 33, -60, 54, -2, 79, -19, 37, -44, 49, -70, 92, -29, 41],
+    [-28, 51, -34, 86, 15, -6, 68, -21, 25, -40, 56, -67, 97, -24, 32],
+    [39, -16, 47, -55, 62, -1, 80, -20, 24, -45, 48, -69, 91, -30, 53],
+    [-42, 31, -38, 81, 10, -8, 66, -15, 27, -41, 59, -63, 96, -26, 36],
+    [20, -48, 50, -73, 58, -4, 78, -22, 22, -43, 52, -64, 90, -31, 44],
+    [-25, 35, -41, 84, 7, -9, 74, -12, 28, -37, 55, -62, 95, -22, 40],
+    [46, -10, 43, -59, 65, -2, 82, -18, 20, -42, 50, -68, 89, -28, 33],
+    [-30, 44, -36, 83, 16, -7, 67, -21, 23, -39, 57, -61, 94, -23, 38]
+], dtype = np.int32)
+
+
+small_kernel = np.array([
     [-1,  0,  1],
     [-2,  0,  2],
     [-3,  0,  3]
 ], dtype=np.int8)
 
-def find_optimal_shift(matrice_r1, matrice_r2, target_range=256, padding='valid'):
-    """Ritorna lo shift ottimum e i valori di max/min post-convoluzione"""
-    
-    # Genera le due matrici se non sono fornite
-    if not all(hasattr(mat, '__name__') or hasattr(mat, 'size')) for mat in [matrice_r1, matrice_r2]:
-        matrice_r1 = generate_mtrix(8, 8, range_val=100)
-        matrice_r2 = generate_mtrix(15, 15, range_val=100)
-    
-    # Ottiene il padding='same' per mantenere la stessa dimensione all'uscita
-    h, w = matrice_r2.shape
-    
-    # Esegue convoluzione come correlazione nel piano delle frequenze
-    conv_result = correlate2d(
-        matrice_r1, 
-        np.flip(matrice_r2, axis=(0, 1)), 
-        mode=padding,
-        origin='lower' if padding == 'same' else None
-    )
-    
-    # Calcolo dello range dinamico del risultato
-    max_val = float(np.max(conv_result))
-    min_val = float(np.min(conv_result))
-    dynamic_range = max_val - min_val
-    
-    print(f"Dynamic Range risultati convoluzione: [{min_val:.2f}, {max_val:.2f}]")
-    
-    # Formula per calcolare lo shift ottimale per int8 [−128, 127] (range=256)
-    target_range = 256
-    
-    # Calcolo del numero di bit necessari a rappresentare il range dinamiche
-    log_dynamic_range = np.log2(dynamic_range / target_range + 1e-9)
-    bit_shift = int(np.ceil(log_dynamic_range))
-    
-    print(f"Shift necessario: {bit_shift} bit")
-    shift_val = 1 << bit_shift
-    
-    # Calcolo i valori clamped dopo lo shift e dopo la quantizzazione
-    max_clamped = int(np.max(shift_val * conv_result) - target_range//2)
-    min_clamped = int(np.min(shift_val * conv_result) + target_range//2)
-    
-    return bit_shift, shift_val, {
-        'max_orig': max_val, 
-        'min_orig': min_val, 
-        'max_clamped': max_clamped, 
-        'min_clamped': min_clamped,
-        'dynamic_range': dynamic_range
-    }
+small_kernel_2 = np.array([
+    [ 1,    0,   -1],
+    [ 2,    1,    0],
+    [ -1,   2,    1]
+], dtype=np.int8)
 
 
+medium_kernel = np.array([
+    [1,  2,  0,  -1, 3],
+    [4,  0,  2,  -3, 1],
+    [-2, 1,  3,  0,  4],
+    [0,  -3, 1,  2, -1],
+    [3,  1,  -2, 0,  2]
+], dtype=np.int8)
 
-large_activation_result = signal.correlate2d(large_activation, large_activation_kernel, mode='valid')
+large_kernel = np.array([
+    [-12, 18, -24, 7, -9, 15, -11, 6],
+    [13, -17, 22, -5, 10, -8, 14, -19],
+    [-20, 16, -21, 9, -4, 12, -15, 7],
+    [19, -14, 23, -12, 6, -10, 18, -8],
+    [-11, 15, -22, 8, -13, 9, -16, 5],
+    [17, -9, 20, -7, 11, -14, 13, -6],
+    [-18, 21, -25, 4, -8, 11, -12, 10],
+    [14, -6, 19, -11, 7, -15, 10, -3]
+], dtype=np.int32)
 
-print(large_activation_result)
-print(np.maximum(0, large_activation_result))
+medium_bias = np.array([
+    [-32, 16, -48, 57],
+    [21, -19, 76, -35],
+    [-13, 88, -42, 61],
+    [45, -27, 33, -8]
+], dtype = np.int32)
+
+small_bias = np.array([
+    [-1, 2,  -3],
+    [-1, 2,  -3],
+    [-1, 2,  -3]
+], dtype=np.int8)
+
+
+small_convolution_result = signal.correlate2d(small_activation, small_kernel_2, mode='valid')
+
+print("--- test small matrices (stride = 1, shift = 0) ---") 
+print("Activation matrix: ")
+print(small_activation) 
+print("Weight matrix: ")
+print(small_kernel_2)
+print("Results:")
+print(small_convolution_result)
+print("Processed results: ")
+print(np.maximum(0, small_convolution_result+small_bias))
+
+medium_convolution_result = signal.correlate2d(medium_activation, small_kernel, mode='valid')
+
+print("--- test medium matrices (stride = 1, shift = 0) ---") 
+print("Activation matrix: ")
+print(medium_activation) 
+print("Weight matrix: ")
+print(small_kernel)
+print("Results:")
+print(medium_convolution_result)
+print("Processed results: ")
+print(np.maximum(0, medium_convolution_result))
+
+large_convolution_result = signal.correlate2d(large_activation, large_kernel, mode='valid')[::2, ::2]
+processed_matrix = ((large_convolution_result+medium_bias) >> 8).clip(-128, 127)
+
+print("--- test large matrices (stride = 2, shift = 8 ---")
+print(large_activation) 
+print("Weight matrix: ")
+print(large_kernel)
+print("Results:")
+print(large_convolution_result)
+print("Biased results:")
+print(large_convolution_result+medium_bias)
+print("Processed results: ")
+print(np.maximum(0, processed_matrix))
+
+

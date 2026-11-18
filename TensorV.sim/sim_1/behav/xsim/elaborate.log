@@ -1,7 +1,7 @@
 Vivado Simulator v2025.2
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
 Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
-Running: /opt/Xilinx/2025.2/Vivado/bin/unwrapped/lnx64.o/xelab --incr --debug typical --relax --mt 8 -L xil_defaultlib -L secureip --snapshot pe_matrix_1L1S_convolution_test_behav xil_defaultlib.pe_matrix_1L1S_convolution_test -log elaborate.log 
+Running: /opt/Xilinx/2025.2/Vivado/bin/unwrapped/lnx64.o/xelab --incr --debug typical --relax --mt 8 -L xil_defaultlib -L secureip --snapshot PE_matrix_1L_convolution_test_behav xil_defaultlib.PE_matrix_1L_convolution_test -log elaborate.log 
 Using 8 slave threads.
 Starting static elaboration
 Completed static elaboration
@@ -54,5 +54,5 @@ Compiling architecture behavioral of entity xil_defaultlib.output_processor [out
 Compiling architecture behavioral of entity xil_defaultlib.and_reductor [\and_reductor(data_size=8)\]
 Compiling architecture behavioral of entity xil_defaultlib.or_reductor [\or_reductor(data_size=8)\]
 Compiling architecture behavioral of entity xil_defaultlib.PE_matrix [pe_matrix_default]
-Compiling architecture behavioral of entity xil_defaultlib.pe_matrix_1l1s_convolution_test
-Built simulation snapshot pe_matrix_1L1S_convolution_test_behav
+Compiling architecture behavioral of entity xil_defaultlib.pe_matrix_1l_convolution_test
+Built simulation snapshot PE_matrix_1L_convolution_test_behav

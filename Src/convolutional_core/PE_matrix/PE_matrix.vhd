@@ -320,26 +320,68 @@ begin
     
     
     -- combinatory signal decoders for the dimension decoding 
+    -- The columns_enable_lines signal is used to decode wich column of the matrix and bias/output buffers should be used for the comutation/unloading phase 
+    -- The weight_enable_lines signal is used to decode which weight buffers and rows of the matrix should be used for the loading/computation 
+    -- The activation_enable_lines signal is used to decode which activation buffers should be enabled for the loading phase 
+   
     column_enable_lines_routing: for i in 0 to (DEPTH-1) generate 
+        signal matrix_shifts_y:   INTEGER;
+        signal stride_mode:       INTEGER;
+        signal stride_enable:     STD_LOGIC;
+        
     begin
-        column_enable_lines(i) <= '1'   when (i<to_integer(UNSIGNED(matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB)))) else
-                                  '0';
+        -- the number of columns in the PE matrix involved in the computation is given by the number of vertical shifts of the weight matrix (CONV_SHIFTS_Y)
+        matrix_shifts_y <= to_integer(UNSIGNED(matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB)));
+        
+        -- The stride mode indicates which columns should be masked or not because the stride of the convolution 
+        stride_mode <= 2 when (matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_Y_MSB downto MATRIX_CONTROL_CONV_STRIDE_Y_LSB) = CONV_STRIDE_2) else 
+                                                4 when (matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_Y_MSB downto MATRIX_CONTROL_CONV_STRIDE_Y_LSB) = CONV_STRIDE_4) else 
+                                                8 when (matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_Y_MSB downto MATRIX_CONTROL_CONV_STRIDE_Y_LSB) = CONV_STRIDE_8) else 
+                                                1;
+        
+        
+        -- If the stride number > 1 (2, 4 or 8), the STRIDE_ENABLE value masks the unused columns. 
+        
+        --stride_enable <= '1' when ( i mod STRIDE_MODE = 0) else
+        --                 '0';
+        
+        
+        -- if STRIDE = 1 and i < CONV_SHIFTS_Y, the column is considered active (all the columns with an ID lower than CONV_SHIFTS_Y)
+        -- if STRIDE > 1 and i < CONV_SHIFTS_Y, the column is enabled only when the column is not skipped because the striding)
+        
+        --column_enable_lines(i) <= '1'   when (i<matrix_shifts_y and stride_enable = '1') else
+        column_enable_lines(i) <= '1'   when (i<(matrix_shifts_y*stride_mode) and (i mod stride_mode = 0)) else
+                                                    '0';
     end generate;  
+   
     
     weight_enable_lines_routing: for i in 0 to (WEIGHT_LINES-1) generate 
+        signal matrix_weight_y:   INTEGER;
     begin
-        weight_enable_lines(i) <= '1'   when (i<to_integer(UNSIGNED(matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_Y_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_Y_LSB)))) else
+        matrix_weight_y <= to_integer(UNSIGNED(matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_Y_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_Y_LSB)));
+    
+        -- only the rows of the PE matrix that contain a valid weight matrix should be involved in the computation. 
+        weight_enable_lines(i) <= '1'   when (i<matrix_weight_y) else
                                   '0';
     end generate;  
     
     activation_forward_enable_lines_routing: for i in 0 to (ACTIVATION_LINES-1) generate 
+        signal MATRIX_ACTIVATION_Y: INTEGER;
     begin
-        activation_enable_lines(i) <=   '1'   when (i<to_integer(UNSIGNED(matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_Y_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_Y_LSB)))) else
+        matrix_activation_y <= to_integer(UNSIGNED(matrix_control_bus(MATRIX_CONTROL_ACTIVATION_SIZE_Y_MSB downto MATRIX_CONTROL_ACTIVATION_SIZE_Y_LSB)));
+        
+        -- only the diagonals of the PE matrix that contain a valid activation row ahould be able to receive a valid activation. 
+        activation_enable_lines(i) <=   '1'   when (i< matrix_activation_y ) else
                                                 '0';
     end generate;    
     
     -- combinatory signal decoders for each accumulation line status 
+    -- ready_lines is a vector that signals which accumulation lines (columns) of the matrix are ready to receive a command 
+    -- waiting_lines is a vector that signals which accumulation lines (columns) of the matrix are waiting for data to continue the computation/unloading process
+    
     ready_lines_routing:    for i in 0 to (ACCUMULATION_LINES-1) generate 
+        -- a bit of the ready lines is obtained by using an AND tree between all the ready bits of the PEs contained in a column. 
+    
         and_line:   and_reductor 
             Generic map (
                 DATA_SIZE => DEPTH
@@ -351,6 +393,7 @@ begin
     end generate; 
     
     waiting_lines_routing:    for i in 0 to (ACCUMULATION_LINES-1) generate 
+        -- a bit of the waiting lines is obtained by using an OR tree between all the waiting bits of the PEs contained in a column. 
         or_line:   or_reductor 
             Generic map (
                 DATA_SIZE => DEPTH
@@ -393,65 +436,10 @@ begin
                
             else
                 if (matrix_control_bus(MATRIX_CONTROL_COMMAND_VALID) = '1') then 
-                
-                    -- command routing from the matrix control bus to the PE control lines 
-                    if (matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) = MATRIX_COMMAND_LOAD) then 
-                        for i in 0 to(ACCUMULATION_LINES)-1 loop 
-                            control_ports(i)(PE_CONV_STRIDE_X_MSB downto PE_CONV_STRIDE_X_LSB) <= (others => '0');
-                            control_ports(i)(PE_CONV_SHIFTS_X_MSB downto PE_CONV_SHIFTS_X_LSB) <= (others => '0');
-                            control_ports(i)(PE_ACTIVATIONS_CLEAR) <= matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS_FLAG);
-                            control_ports(i)(PE_WEIGHTS_CLEAR) <= matrix_control_bus(MATRIX_CONTROL_CLEAR_WEIGHTS_FLAG);
-                            control_ports(i)(PE_INIT) <= '0';
-                            control_ports(i)(PE_PROCESS_START) <= '0';
-                            control_ports(i)(PE_PROCESS_TYPE) <= '0';
-                        end loop;
-                        
-                    elsif (matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) = MATRIX_COMMAND_COMPUTE) then 
-                        for i in 0 to(ACCUMULATION_LINES)-1 loop 
-                            control_ports(i)(PE_CONV_STRIDE_X_MSB downto PE_CONV_STRIDE_X_LSB) <= matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_X_MSB downto MATRIX_CONTROL_CONV_STRIDE_X_LSB);
-                            control_ports(i)(PE_CONV_SHIFTS_X_MSB downto PE_CONV_SHIFTS_X_LSB) <= matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB);
-                            control_ports(i)(PE_ACTIVATIONS_CLEAR) <= matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS_FLAG);
-                            control_ports(i)(PE_WEIGHTS_CLEAR) <= matrix_control_bus(MATRIX_CONTROL_CLEAR_WEIGHTS_FLAG);
-                            control_ports(i)(PE_INIT) <= '0';
-                            control_ports(i)(PE_PROCESS_START) <= '1';
-                            control_ports(i)(PE_PROCESS_TYPE) <= '0';
-                        end loop;
-                                           
-                    elsif (matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) = MATRIX_COMMAND_UNLOAD) then 
-                        for i in 0 to(ACCUMULATION_LINES)-1 loop 
-                            control_ports(i)(PE_CONV_STRIDE_X_MSB downto PE_CONV_STRIDE_X_LSB) <= (others => '0');
-                            control_ports(i)(PE_CONV_SHIFTS_X_MSB downto PE_CONV_SHIFTS_X_LSB) <= matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB);
-                            control_ports(i)(PE_ACTIVATIONS_CLEAR) <= '0';
-                            control_ports(i)(PE_WEIGHTS_CLEAR) <= '0';
-                            control_ports(i)(PE_INIT) <= '0';
-                            control_ports(i)(PE_PROCESS_START) <= '1';
-                            control_ports(i)(PE_PROCESS_TYPE) <= '1';
-                        end loop;
-                    
-                    elsif (matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) = MATRIX_COMMAND_INIT) then 
-                        for i in 0 to(ACCUMULATION_LINES)-1 loop 
-                            control_ports(i)(PE_CONV_STRIDE_X_MSB downto PE_CONV_STRIDE_X_LSB) <= (others => '0');
-                            control_ports(i)(PE_CONV_SHIFTS_X_MSB downto PE_CONV_SHIFTS_X_LSB) <= (others => '0');
-                            control_ports(i)(PE_ACTIVATIONS_CLEAR) <= '0';
-                            control_ports(i)(PE_WEIGHTS_CLEAR) <= '0';
-                            control_ports(i)(PE_INIT) <= '1';
-                            control_ports(i)(PE_PROCESS_START) <= '0';
-                            control_ports(i)(PE_PROCESS_TYPE) <= '0';
-                        end loop;       
-                    else                        
-                        for i in 0 to(ACCUMULATION_LINES)-1 loop 
-                            control_ports(i)(PE_CONV_STRIDE_X_MSB downto PE_CONV_STRIDE_X_LSB) <= (others => '0');
-                            control_ports(i)(PE_CONV_SHIFTS_X_MSB downto PE_CONV_SHIFTS_X_LSB) <= (others => '0');
-                            control_ports(i)(PE_ACTIVATIONS_CLEAR) <= '0';
-                            control_ports(i)(PE_WEIGHTS_CLEAR) <= '0';
-                            control_ports(i)(PE_INIT) <= '0';
-                            control_ports(i)(PE_PROCESS_START) <= '0';
-                            control_ports(i)(PE_PROCESS_TYPE) <= '0';
-                        end loop;
-                    end if; 
                     
                     -- when a LOAD command is received, the weight/activation buffers are programmed to send a certain amount of  data to the PE matrix
                     if (matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) = MATRIX_COMMAND_LOAD) then 
+                        
                         -- if the load activations flag is set, the process request a transfer of activation_matrix_size_x elements 
                         -- only the buffers between 0 an activation_matrix_size_y receive the send command 
                         if (matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) = '1') then 
@@ -472,17 +460,44 @@ begin
                             end if;
                             weight_buffers_size_send(WEIGHT_MATRIX_SIZE_BITS-1 downto 0) <= matrix_control_bus(MATRIX_CONTROL_WEIGHT_SIZE_X_MSB downto MATRIX_CONTROL_WEIGHT_SIZE_X_LSB);
                         end if; 
-
-                    -- if a COMPUTE command is received, the PE enable signals are updated to enable only the necessary PE for the computation, 
+                        
+                        -- The command lines are modified in order to match witht the LOAD command 
+                        for i in 0 to(ACCUMULATION_LINES)-1 loop 
+                            control_ports(i)(PE_CONV_STRIDE_X_MSB downto PE_CONV_STRIDE_X_LSB) <= (others => '0');
+                            control_ports(i)(PE_CONV_SHIFTS_X_MSB downto PE_CONV_SHIFTS_X_LSB) <= (others => '0');
+                            control_ports(i)(PE_ACTIVATIONS_CLEAR) <= matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS_FLAG);
+                            control_ports(i)(PE_WEIGHTS_CLEAR) <= matrix_control_bus(MATRIX_CONTROL_CLEAR_WEIGHTS_FLAG);
+                            control_ports(i)(PE_INIT) <= '0';
+                            control_ports(i)(PE_PROCESS_START) <= '0';
+                            control_ports(i)(PE_PROCESS_TYPE) <= '0';
+                        end loop;
                     
+                    -- if a COMPUTE command is received, the PE enable signals are updated to enable only the necessary PE for the computation, 
                     elsif (matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) = MATRIX_COMMAND_COMPUTE) then 
+                        
+                        -- Only the necessary PEs are enabled 
                         for r in 0 to DEPTH-1 loop 
                             for c in 0 to DEPTH-1 loop 
+                                    -- A PE should be activated when it contains a valid weight row and the coulmn of the matrix is active. 
                                     enables_matrix(r,c) <= weight_enable_lines(r) and column_enable_lines(c);
                             end loop; 
                         end loop;
                         
+                        -- The command lines are modified in order to match with the COMPUTE command 
+                        for i in 0 to(ACCUMULATION_LINES)-1 loop 
+                            control_ports(i)(PE_CONV_STRIDE_X_MSB downto PE_CONV_STRIDE_X_LSB) <= matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_X_MSB downto MATRIX_CONTROL_CONV_STRIDE_X_LSB);
+                            control_ports(i)(PE_CONV_SHIFTS_X_MSB downto PE_CONV_SHIFTS_X_LSB) <= matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB);
+                            control_ports(i)(PE_ACTIVATIONS_CLEAR) <= matrix_control_bus(MATRIX_CONTROL_CLEAR_ACTIVATIONS_FLAG);
+                            control_ports(i)(PE_WEIGHTS_CLEAR) <= matrix_control_bus(MATRIX_CONTROL_CLEAR_WEIGHTS_FLAG);
+                            control_ports(i)(PE_INIT) <= '0';
+                            control_ports(i)(PE_PROCESS_START) <= '1';
+                            control_ports(i)(PE_PROCESS_TYPE) <= '0';
+                        end loop;
+                    
+                    -- if an UNLOAD command is received, the bias buffers, output processors and output buffers lines are prepared for processing the outputs from the Pe matrix          
                     elsif (matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) = MATRIX_COMMAND_UNLOAD) then 
+                        
+                        -- If the bias buffers sould be used for the output computation (LOAD_BIAS_FLAG = '1'), the necessary bias buffers are enabled 
                         if (matrix_control_bus(MATRIX_CONTROL_LOAD_BIAS_FLAG) = '1') then 
                             output_processor_bias_enable_lines <= column_enable_lines;
                             bias_buffers_send_lines <= column_enable_lines; 
@@ -491,26 +506,59 @@ begin
                             end if;
                             bias_buffers_size_send(CONV_SHIFTS_BITS-1 downto 0) <= matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB);
                         end if; 
+                        -- only the required buffers receives a send command 
+                        output_buffers_send_lines <= column_enable_lines;    
                         
-                        output_buffers_send_lines <= column_enable_lines;                        
+                        -- A send command is issued only for the used output buffers.                    
                         if (CONV_SHIFTS_BITS < BUFFER_SIZE_BITS) then  
                             output_buffers_size_send(BUFFER_SIZE_BITS-1 downto CONV_SHIFTS_BITS) <= (others => '0');
                         end if;
                         output_buffers_size_send(CONV_SHIFTS_BITS-1 downto 0) <= matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB);
+                        
+                        -- The requantization shift is propagated to the output_processors. 
                         matrix_current_requantization_shift <=  matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB);
-
-                    elsif (matrix_control_bus(MATRIX_CONTROL_COMMAND_TYPE_MSB downto MATRIX_CONTROL_COMMAND_TYPE_LSB) = MATRIX_COMMAND_INIT) then 
+                        
+                        
+                        -- The control lines are modified in order to match the UNLOAD command
+                        for i in 0 to(ACCUMULATION_LINES)-1 loop 
+                            control_ports(i)(PE_CONV_STRIDE_X_MSB downto PE_CONV_STRIDE_X_LSB) <= (others => '0');
+                            control_ports(i)(PE_CONV_SHIFTS_X_MSB downto PE_CONV_SHIFTS_X_LSB) <= matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB);
+                            control_ports(i)(PE_ACTIVATIONS_CLEAR) <= '0';
+                            control_ports(i)(PE_WEIGHTS_CLEAR) <= '0';
+                            control_ports(i)(PE_INIT) <= '0';
+                            control_ports(i)(PE_PROCESS_START) <= '1';
+                            control_ports(i)(PE_PROCESS_TYPE) <= '1';
+                        end loop;
+                   
+                    -- when a INIT command is received (or the command is not valid), the PE matrix is cleared and all PEs are disabled 
+                    else
+                        -- All the PEs are disabled 
                         for r in 0 to DEPTH-1 loop 
                             for c in 0 to DEPTH-1 loop 
                                     enables_matrix(r,c) <= '0';
                             end loop; 
                         end loop;
+                        
+                        -- The send signals are cleared
                         output_buffers_send_lines <= (others => '0');
                         activation_buffers_send_lines <= (others => '0');
                         weight_buffers_send_lines <= (others => '0');
                         bias_buffers_send_lines <= (others => '0');
+                        
+                        -- The command lines are modified to initialize the PE matrix
+                        for i in 0 to(ACCUMULATION_LINES)-1 loop 
+                            control_ports(i)(PE_CONV_STRIDE_X_MSB downto PE_CONV_STRIDE_X_LSB) <= (others => '0');
+                            control_ports(i)(PE_CONV_SHIFTS_X_MSB downto PE_CONV_SHIFTS_X_LSB) <= (others => '0');
+                            control_ports(i)(PE_ACTIVATIONS_CLEAR) <= '0';
+                            control_ports(i)(PE_WEIGHTS_CLEAR) <= '0';
+                            control_ports(i)(PE_INIT) <= '1';
+                            control_ports(i)(PE_PROCESS_START) <= '0';
+                            control_ports(i)(PE_PROCESS_TYPE) <= '0';
+                        end loop;       
                     end if; 
                 else 
+                    -- the buffers send signals and the control signals are cleared when a command is not issued. 
+                    
                     for i in 0 to(ACCUMULATION_LINES)-1 loop 
                         control_ports(i)(PE_CONV_STRIDE_X_MSB downto PE_CONV_STRIDE_X_LSB) <= (others => '0');
                         control_ports(i)(PE_CONV_SHIFTS_X_MSB downto PE_CONV_SHIFTS_X_LSB) <= (others => '0');
@@ -521,12 +569,14 @@ begin
                         control_ports(i)(PE_PROCESS_TYPE) <= '0';
                     end loop;
                     
+                    -- The send signals are cleared. 
                     output_buffers_send_lines <= (others => '0');
                     activation_buffers_send_lines <= (others => '0');
                     weight_buffers_send_lines <= (others => '0');
                     bias_buffers_send_lines <= (others => '0');
                 end if; 
-
+                
+                -- Propagation of the matrix ready and waiting status lines
                 matrix_status_bus(MATRIX_STATUS_LINES_READY_MSB downto MATRIX_STATUS_LINES_READY_LSB) <= ready_lines;
                 matrix_status_bus(MATRIX_STATUS_LINES_WAITING_MSB downto MATRIX_STATUS_LINES_WAITING_LSB) <= waiting_lines;
            end if;

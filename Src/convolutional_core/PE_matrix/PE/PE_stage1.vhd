@@ -41,9 +41,7 @@ entity PE_stage1 is
 end PE_stage1;
 
 architecture Behavioral of PE_stage1 is
---    signal move_data_queue, pop_accumulator_queue, row_done: STD_LOGIC;  
---    signal data_queue_empty, accumulations_queue_empty: STD_LOGIC;
-        
+       
     constant WEIGHT_QUEUE_SIZE_BITS:         INTEGER := WEIGHT_MATRIX_SIZE_BITS;
     constant ACTIVATION_QUEUE_SIZE_BITS:     INTEGER := ACTIVATION_MATRIX_SIZE_BITS;
     constant OUTPUT_QUEUE_SIZE_BITS:         INTEGER := WEIGHT_MATRIX_SIZE_BITS;

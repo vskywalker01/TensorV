@@ -59,7 +59,7 @@ architecture Behavioral of PE_matrix_1S_convolution_test is
     end component;
     
     -- The procedure send matrix_command sends a command to the convolutional matrix using its specific format 
-    procedure send_matrix_command(
+        procedure send_matrix_command(
         constant activation_y_size:      in INTEGER := 0;
         constant activation_x_size:      in INTEGER := 0;
         constant weight_y_size:          in INTEGER := 0;
@@ -86,6 +86,7 @@ architecture Behavioral of PE_matrix_1S_convolution_test is
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(conv_shifts_x,CONV_SHIFTS_BITS));
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB) <= STD_LOGIC_VECTOR(to_unsigned(conv_shifts_y,CONV_SHIFTS_BITS));
         matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_X_MSB downto MATRIX_CONTROL_CONV_STRIDE_X_LSB) <= conv_stride;
+        matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_Y_MSB downto MATRIX_CONTROL_CONV_STRIDE_Y_LSB) <= conv_stride;
         matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB) <= STD_LOGIC_VECTOR(to_unsigned(requantization_shift,REQUANTIZATION_SHIFT_BITS));
         matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) <= load_activations;
         matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) <= load_weights;
@@ -104,6 +105,7 @@ architecture Behavioral of PE_matrix_1S_convolution_test is
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_X_MSB downto MATRIX_CONTROL_CONV_STRIDE_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_Y_MSB downto MATRIX_CONTROL_CONV_STRIDE_Y_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) <= '0';
         matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) <= '0';

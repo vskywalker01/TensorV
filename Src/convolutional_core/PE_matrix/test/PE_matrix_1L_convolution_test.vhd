@@ -31,15 +31,16 @@
 -- M2 output unloading
 
 library IEEE;
+library work;
 use IEEE.STD_LOGIC_1164.ALL;
 use work.PE_MATRIX_PARAMETERS.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity pe_matrix_1L_convolution_test is
+entity PE_matrix_1L_convolution_test is
 --  Port ( );
-end pe_matrix_1L_convolution_test;
+end PE_matrix_1L_convolution_test;
 
-architecture Behavioral of pe_matrix_1L_convolution_test is
+architecture Behavioral of PE_matrix_1L_convolution_test is
     component PE_matrix is 
         Port ( 
             clk:                    in STD_LOGIC;  
@@ -59,7 +60,7 @@ architecture Behavioral of pe_matrix_1L_convolution_test is
     end component;
     
     -- The procedure send matrix_command sends a command to the convolutional matrix using its specific format 
-    procedure send_matrix_command(
+        procedure send_matrix_command(
         constant activation_y_size:      in INTEGER := 0;
         constant activation_x_size:      in INTEGER := 0;
         constant weight_y_size:          in INTEGER := 0;
@@ -86,6 +87,7 @@ architecture Behavioral of pe_matrix_1L_convolution_test is
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB) <= STD_LOGIC_VECTOR(to_unsigned(conv_shifts_x,CONV_SHIFTS_BITS));
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB) <= STD_LOGIC_VECTOR(to_unsigned(conv_shifts_y,CONV_SHIFTS_BITS));
         matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_X_MSB downto MATRIX_CONTROL_CONV_STRIDE_X_LSB) <= conv_stride;
+        matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_Y_MSB downto MATRIX_CONTROL_CONV_STRIDE_Y_LSB) <= conv_stride;
         matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB) <= STD_LOGIC_VECTOR(to_unsigned(requantization_shift,REQUANTIZATION_SHIFT_BITS));
         matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) <= load_activations;
         matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) <= load_weights;
@@ -104,6 +106,7 @@ architecture Behavioral of pe_matrix_1L_convolution_test is
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_X_MSB downto MATRIX_CONTROL_CONV_SHIFTS_X_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_CONV_SHIFTS_Y_MSB downto MATRIX_CONTROL_CONV_SHIFTS_Y_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_X_MSB downto MATRIX_CONTROL_CONV_STRIDE_X_LSB) <= (others => '0');
+        matrix_control_bus(MATRIX_CONTROL_CONV_STRIDE_Y_MSB downto MATRIX_CONTROL_CONV_STRIDE_Y_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_REQUANTIZATION_SHIFT_MSB downto MATRIX_CONTROL_REQUANTIZATION_SHIFT_LSB) <= (others => '0');
         matrix_control_bus(MATRIX_CONTROL_LOAD_ACTIVATIONS_FLAG) <= '0';
         matrix_control_bus(MATRIX_CONTROL_LOAD_WEIGHTS_FLAG) <= '0';
@@ -207,37 +210,51 @@ architecture Behavioral of pe_matrix_1L_convolution_test is
     
     -- test matrices used for the testbenches 
     type SAMPLE_MATRIX is array (natural range <>,natural range <>) of INTEGER; 
-    constant TEST_MATRIX_SIZE: INTEGER := 10;
-    constant TEST_WEIGHT_SIZE: INTEGER := 3;
-    constant TEST_RESULT_SIZE: INTEGER := 8;
+    constant TEST_MATRIX_SIZE: INTEGER := 15;
+    constant TEST_WEIGHT_SIZE: INTEGER := 8;
+    constant TEST_RESULT_SIZE: INTEGER := 4;
     constant TEST_MATRIX: SAMPLE_MATRIX(0 to TEST_MATRIX_SIZE-1, 0 to TEST_MATRIX_SIZE-1) := (
-        (3, 7, -4, 12, -1, 9, 3, 6, -8, 15),
-        (11, -2, 6, 14, 0, 7, -5, 3, 10, -1),
-        (-7, 5, 13, -2, 8, 1, 6, 11, -3, 4),
-        (2, 8, -6, 10, 4, -3, 7, 1, 6, 12),
-        (15, -1, 7, -8, 2, 11, 4, 9, -5, 3),
-        (-3, 6, 12, 1, 9, 4, -7, 2, 8, 14),
-        (8, -5, 1, 7, 13, 3, 6, -2, 4, 11),
-        (-9, 3, 8, 10, -4, 6, 1, 12, 5, 2),
-        (5, 11, -2, 7, 3, 9, 4, -6, 8, 1),
-        (12, 0, 6, -8, 5, 2, 8, 3, -1, 7)
+       (-24,  37, -56,  89,  12, -43,  67, -18,  45, -32,  78, -91, 103, -21,  54),
+       ( 72, -19,  48, -35,  61,  -7,  83, -14,  29, -51,  36, -76,  94, -42,  16),
+       (-63,  28, -49,  87,  33, -11,  75, -16,  21, -47,  58, -88,  99, -13,  38),
+       ( 14, -41,  52, -68,  30,  -9,  81, -10,  34, -72,  43, -65,  95, -23,  57),
+       (-36,  22, -44,  85,  11, -15,  70,  -8,  46, -39,  69, -77, 102, -25,  31),
+       ( 55, -12,  39, -58,  76,  -3,  84, -17,  23, -53,  42, -66,  93, -20,  50),
+       (-11,  40, -46,  82,  18,  -5,  71, -13,  26, -38,  51, -74,  98, -27,  35),
+       ( 64,  -9,  33, -60,  54,  -2,  79, -19,  37, -44,  49, -70,  92, -29,  41),
+       (-28,  51, -34,  86,  15,  -6,  68, -21,  25, -40,  56, -67,  97, -24,  32),
+       ( 39, -16,  47, -55,  62,  -1,  80, -20,  24, -45,  48, -69,  91, -30,  53),
+       (-42,  31, -38,  81,  10,  -8,  66, -15,  27, -41,  59, -63,  96, -26,  36),
+       ( 20, -48,  50, -73,  58,  -4,  78, -22,  22, -43,  52, -64,  90, -31,  44),
+       (-25,  35, -41,  84,   7,  -9,  74, -12,  28, -37,  55, -62,  95, -22,  40),
+       ( 46, -10,  43, -59,  65,  -2,  82, -18,  20, -42,  50, -68,  89, -28,  33),
+       (-30,  44, -36,  83,  16,  -7,  67, -21,  23, -39,  57, -61,  94, -23,  38)
     );
-  
+    
+    constant TEST_BIAS: SAMPLE_MATRIX(0 to TEST_RESULT_SIZE-1, 0 to TEST_RESULT_SIZE-1) := (
+       (-32, 16, -48, 57),
+       ( 21, -19, 76, -35),
+       (-13, 88, -42, 6),
+       (45, -27, 33, -8)
+
+    );
+    
     constant TEST_WEIGHT: SAMPLE_MATRIX(0 to TEST_WEIGHT_SIZE-1, 0 to TEST_WEIGHT_SIZE-1) := (
-        (-1, 0, 1),
-        (-2, 0, 2),
-        (-3, 0, 3)
+        (-12,  18, -24,   7,  -9,  15, -11,   6),
+        ( 13, -17,  22,  -5,  10,  -8,  14, -19),
+        (-20,  16, -21,   9,  -4,  12, -15,   7),
+        ( 19, -14,  23, -12,   6, -10,  18,  -8),
+        (-11,  15, -22,   8, -13,   9, -16,   5),
+        ( 17,  -9,  20,  -7,  11, -14,  13,  -6),
+        (-18,  21, -25,   4,  -8,  11, -12,  10),
+        ( 14,  -6,  19, -11,   7, -15,  10,  -3)
     );
     
     constant TEST_RESULTS: SAMPLE_MATRIX(0 to TEST_RESULT_SIZE-1, 0 to TEST_RESULT_SIZE-1) := (
-        (43, 16,  0,  0,  0, 19,  0,  0),
-        (11,  8, 14,  0,  0, 28,  0, 15),
-        ( 0,  0,  0, 34, 10, 12,  0,  0),
-        (21,  0,  0, 34,  0,  0, 26, 35),
-        ( 1, 19, 25, 13,  0,  0, 15, 57),
-        (52, 40,  0,  0,  0,  6, 23,  8),
-        ( 6, 14,  3,  0,  6,  0, 18, 14),
-        ( 0,  0,  0, 30, 16,  0,  0, 16)
+        ( 88,   69,   4,  0),
+        ( 86,   71,  11,   0),
+        ( 85,  74,   12,   0),
+        ( 85,   72,  14,   2)
     );
 begin
     
@@ -276,14 +293,6 @@ begin
         inputs_load_done <= '0';
         bias_load_done <= '0';
         results_unload_done <= '0';
-        
-        report "control bus: "
-            & "MATRIX_CONTROL_CONV_SHIFTS_X_LSB: " & integer'image(MATRIX_CONTROL_CONV_SHIFTS_X_LSB)
-            & ", MATRIX_CONTROL_CONV_SHIFTS_X_MSB: " & integer'image(MATRIX_CONTROL_CONV_SHIFTS_X_MSB)
-            & ", CONV_SHIFTS_BITS: " & integer'image(CONV_SHIFTS_BITS)
-        severity error;
-
-
                 
         send_buffers_command(
             matrix_buffers_control_bus => matrix_buffers_control_bus
@@ -333,7 +342,28 @@ begin
         );
         
         inputs_load_done <= '1';
-
+        wait until rising_edge(bias_load_signal);
+        
+        -- if the bias load_signal is received, the process loads the bias into the buffers 
+        inputs_load_done <= '0';
+        wait until rising_edge(clk);
+        
+        for r in 0 to (TEST_RESULT_SIZE)-1 loop 
+            for c in 0 to (TEST_RESULT_SIZE)-1 loop        
+                bias_data_in <= STD_LOGIC_VECTOR(TO_SIGNED(TEST_BIAS(r,c),DATA_SIZE)); 
+                send_buffers_command(
+                      add_bias => '1',
+                      add_bias_address => r*2, 
+                      matrix_buffers_control_bus => matrix_buffers_control_bus
+                );
+                wait until rising_edge(clk);
+            end loop; 
+        end loop; 
+        
+        send_buffers_command(
+              matrix_buffers_control_bus => matrix_buffers_control_bus
+        );
+        bias_load_done <= '1';
         wait until rising_edge(results_unload_signal);
         wait until rising_edge(clk); 
         
@@ -349,7 +379,7 @@ begin
         for r in 0 to (TEST_RESULT_SIZE)-1 loop
             send_buffers_command(
                 get_output => '1',
-                get_output_address => r,
+                get_output_address => r*2,
                 matrix_buffers_control_bus => matrix_buffers_control_bus
             );
             wait until rising_edge(clk);
@@ -431,8 +461,8 @@ begin
             weight_y_size => TEST_WEIGHT_SIZE, 
             conv_shifts_x => TEST_RESULT_SIZE,
             conv_shifts_y => TEST_RESULT_SIZE,
-            conv_stride => CONV_STRIDE_1, 
-            requantization_shift => 0,
+            conv_stride => CONV_STRIDE_2, 
+            requantization_shift => 8,
             load_activations => '1',
             load_weights => '1', 
             load_bias => '0', 
@@ -447,15 +477,21 @@ begin
         
         wait until (matrix_buffers_status_bus(MATRIX_BUFFERS_STATUS_ACTIVATIONS_READY_LSB)='1');        
         
+        -- when the ready signal is received from the input buffers, the process sends a bias load command to the buffer process and sends a 
+        -- COMPUTE command to the matrix 
+        wait until rising_edge(clk); 
+        
+        bias_load_signal <= '1';
+        
         send_matrix_command(
             activation_y_size => TEST_MATRIX_SIZE,
             activation_x_size => TEST_MATRIX_SIZE, 
             weight_x_size => TEST_WEIGHT_SIZE,
             weight_y_size => TEST_WEIGHT_SIZE, 
-            conv_shifts_x => TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,
-            conv_shifts_y => TEST_MATRIX_SIZE-TEST_WEIGHT_SIZE+1,
-            conv_stride => CONV_STRIDE_1, 
-            requantization_shift => 0,
+            conv_shifts_x => TEST_RESULT_SIZE,
+            conv_shifts_y => TEST_RESULT_SIZE,
+            conv_stride => CONV_STRIDE_2, 
+            requantization_shift => 8,
             load_activations => '0',
             load_weights => '0', 
             load_bias => '0', 
@@ -466,12 +502,13 @@ begin
             clk => clk
         );
 
-        wait until (matrix_status_bus(MATRIX_STATUS_LINES_READY_LSB)='1');
+        wait until (matrix_status_bus(MATRIX_STATUS_LINES_READY_LSB)='1' and bias_load_done = '1');
+        wait until rising_edge(clk);
         
-        -- when the ready signal is received from the input buffers, the process sends a bias load command to the buffer process and sends a 
-        -- COMPUTE command to the matrix 
-        wait until rising_edge(clk); 
- 
+        -- when the bias buffers and the PEs are ready, the process sends an UNLOAD command to the matrix
+        
+        bias_load_signal <= '0';
+  
         send_matrix_command(
             activation_y_size => TEST_MATRIX_SIZE,
             activation_x_size => TEST_MATRIX_SIZE, 
@@ -479,11 +516,11 @@ begin
             weight_y_size => TEST_WEIGHT_SIZE, 
             conv_shifts_x => TEST_RESULT_SIZE,
             conv_shifts_y => TEST_RESULT_SIZE,
-            conv_stride => CONV_STRIDE_1, 
-            requantization_shift => 0,
+            conv_stride => CONV_STRIDE_2, 
+            requantization_shift => 8,
             load_activations => '0',
             load_weights => '0', 
-            load_bias => '0', 
+            load_bias => '1', 
             clear_activations => '0', 
             clear_weights => '0', 
             command_type => MATRIX_COMMAND_UNLOAD,
