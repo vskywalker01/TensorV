@@ -1,7 +1,0 @@
-Running: xsim.dir/pe_matrix_1L_convolution_test_behav/xsimk -simmode gui -wdb pe_matrix_1L_convolution_test_behav.wdb -simrunnum 0 -socket 37013
-Design successfully loaded
-Design Loading Memory Usage: 222784 KB (Peak: 222784 KB)
-Design Loading CPU Usage: 910 ms
-Simulation completed
-Simulation Memory Usage: 327720 KB (Peak: 362052 KB)
-Simulation CPU Usage: 1220 ms
