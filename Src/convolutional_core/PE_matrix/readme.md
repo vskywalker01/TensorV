@@ -50,8 +50,6 @@ A *Memory controller* is able to communicate with the buffers using the respecti
 
 A dedicated scheduler can send command to execute to the entire *PE matrix* and read the current status using the *matrix control/status bus*. Because, it should control also the memory controller, the scheduler is then able to execute more instructions at the same time. 
 
-## To do list 
-
 ## To Do list
 - [ ] Add an enable mechanism to mask certain PE during a *LOADING* phase.
 - [ ] Optimize the internal architecture.
