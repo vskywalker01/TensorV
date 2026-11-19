@@ -26,4 +26,9 @@ The Processing Element is composed by a three stage pipeline:
 2. The **second stage** contains a *Baugh-wooley carry save adder* that reduces the multiplication between an *activation* and a *weight* during a convolution. Two multiplexers are then used for managing the *partial results* and the accumulation received from the first stage depending on which mode the PE should operate. 
 3. The **third stage** contains an *accumulator* and a *3-way Brent-Kung adder*. The *3-way adder* is used for computing a convolution element (*COMPUTE* phase) or compute the sum between a value contained in the *accumulation scratchpad* and the *output in* (*UNLOAD* phase). Using a *multiplexer* and an *output router*, the result of the sum is diverged in the right section of the *PE* (*Accumulator* during the convolution process, *Accumulation feedback* when a convolution element should be saved in the *scratchpad* or *accumulation out* during an *UNLOAD* process).
 
+## To Do list
+- [ ] Add mask mechanism to the *stage 1* outputs to keep the signals steady when *activation* or *weight* = *0* (reduce dynamic power consumption).
+- [ ] Add a checkpoint mechanism in *stage 1* to enable intermitted computing. 
+- [ ] Optimize intermediate status signals between the stages (*row done*, *reduction valid* and *reduction type* may not be necessary).
+- [ ] Optimize the pipeline further (maybe add another stage to increase the clock speed). 
 
